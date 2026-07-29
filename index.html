@@ -1,0 +1,2189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadoras de Taller | Mantenimiento Cylitec</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d3b66">
+    <link rel="apple-touch-icon" href="image_0.png">
+    
+    <!-- Librería jsPDF para la Calculadora Geométrica -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- MathJax para renderizar fórmulas matemáticas correctamente -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- Script inicial para evitar parpadeos de modo oscuro -->
+    <script>
+        const savedTheme = localStorage.getItem('cylitec_theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+
+    <style>
+        /* VARIABLES GLOBALES (MODO CLARO) */
+        :root {
+            --azul-principal: #0d3b66;
+            --azul-claro: #1d63b8;
+            --verde-acento: #2a9d8f;
+            --rojo-alerta: #e76f51;
+            
+            --bg-color: #f0f4f8;
+            --body-gradient: linear-gradient(135deg, #f0f4f8 0%, #e2eafc 100%);
+            --card-bg: #ffffff;
+            --text-color: #2b2d42;
+            --text-muted: #6c757d;
+            
+            --border-color: #e0e6ed;
+            --input-bg: #fafbfd;
+            --result-bg: #f4f8fb;
+            --theory-bg: rgba(42, 157, 143, 0.08);
+            --tip-bg: rgba(231, 111, 81, 0.06);
+            
+            --tab-btn-bg: #ffffff;
+            --tab-btn-hover: #e9ecef;
+            
+            --header-bg: linear-gradient(135deg, var(--azul-principal), var(--azul-claro));
+            --card-shadow: 0 8px 25px rgba(0,0,0,0.06);
+        }
+
+        /* VARIABLES GLOBALES (MODO OSCURO) */
+        [data-theme="dark"] {
+            --azul-principal: #82a8d9;
+            --azul-claro: #4ea8de;
+            --verde-acento: #2a9d8f;
+            --rojo-alerta: #ffb5a7;
+            
+            --bg-color: #0f172a;
+            --body-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --card-bg: #1e293b;
+            --text-color: #f1f5f9;
+            --text-muted: #94a3b8;
+            
+            --border-color: #334155;
+            --input-bg: #0f172a;
+            --result-bg: #0f172a;
+            --theory-bg: rgba(42, 157, 143, 0.15);
+            --tip-bg: rgba(231, 111, 81, 0.12);
+            
+            --tab-btn-bg: #1e293b;
+            --tab-btn-hover: #334155;
+            
+            --header-bg: linear-gradient(135deg, #0d1b2a, #1b263b);
+            --card-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--body-gradient);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .main-container {
+            max-width: 850px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            background: var(--header-bg);
+            color: white;
+            padding: 25px;
+            border-radius: 14px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            border-bottom: 4px solid var(--verde-acento);
+            position: relative;
+        }
+
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            letter-spacing: 0.5px;
+        }
+        
+        .header p {
+            margin: 0;
+            font-size: 1.05em;
+            opacity: 0.9;
+            padding-right: 90px;
+        }
+
+        .header-controls {
+            position: absolute;
+            top: 20px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .theme-toggle-btn, .wake-lock-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 17px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .theme-toggle-btn:hover, .wake-lock-btn:hover { 
+            transform: scale(1.1); 
+            background: rgba(255, 255, 255, 0.25);
+            border-color: var(--verde-acento); 
+        }
+
+        .wake-lock-btn.active {
+            background: var(--verde-acento);
+            border-color: #ffffff;
+            box-shadow: 0 0 10px rgba(42, 157, 143, 0.8);
+        }
+
+        /* BUSCADOR RÁPIDO */
+        .search-container {
+            margin-bottom: 15px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            font-size: 14.5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            transition: border-color 0.2s;
+        }
+        .search-input:focus {
+            border-color: var(--verde-acento);
+            outline: none;
+        }
+
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 25px;
+            justify-content: center;
+        }
+        .tab-btn {
+            padding: 9px 12px;
+            background-color: var(--tab-btn-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            color: var(--azul-principal);
+        }
+        .tab-btn.active {
+            background-color: var(--verde-acento);
+            border-color: var(--verde-acento);
+            color: white;
+            box-shadow: 0 4px 12px rgba(42, 157, 143, 0.3);
+            transform: translateY(-2px);
+        }
+        .tab-btn:hover:not(.active) {
+            background-color: var(--tab-btn-hover);
+            border-color: var(--azul-claro);
+            color: var(--azul-claro);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 28px;
+            border-radius: 14px;
+            box-shadow: var(--card-shadow);
+            display: none;
+            animation: fadeIn 0.35s ease-in-out;
+            border-top: 5px solid var(--azul-claro);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card.active { display: block; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            color: var(--azul-principal);
+            margin-top: 0;
+            border-bottom: 2px solid var(--verde-acento);
+            padding-bottom: 10px;
+            font-size: 20px;
+            text-align: center;
+        }
+
+        label {
+            font-weight: 600;
+            display: block;
+            margin: 14px 0 5px;
+            color: var(--azul-principal);
+            font-size: 13.5px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 11px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14.5px;
+            box-sizing: border-box;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            margin-bottom: 5px;
+            transition: border-color 0.2s, background-color 0.3s, color 0.3s;
+        }
+        select option { background-color: var(--card-bg); color: var(--text-color); }
+        select:focus, input:focus { border-color: var(--verde-acento); outline: none; background-color: var(--card-bg); }
+
+        .radio-group { display: flex; gap: 12px; margin-bottom: 5px; }
+        .radio-option {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            background-color: var(--input-bg);
+            transition: all 0.2s;
+            text-align: center;
+            color: var(--azul-principal);
+            font-size: 13.5px;
+        }
+        .radio-option input { display: none; }
+        .radio-option.selected {
+            border-color: var(--verde-acento);
+            background-color: var(--theory-bg);
+            color: var(--verde-acento);
+        }
+
+        button.action-btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, var(--verde-acento), #21867a);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15.5px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(42, 157, 143, 0.25);
+        }
+        button.action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(42, 157, 143, 0.35);
+        }
+
+        .resultado {
+            margin-top: 22px;
+            padding: 18px;
+            border-radius: 10px;
+            background-color: var(--result-bg);
+            border-left: 6px solid var(--azul-claro);
+            display: none;
+            border: 1px solid var(--border-color);
+            border-left-width: 6px;
+        }
+        .resultado-item { margin: 10px 0; font-size: 14.5px; }
+        .resultado-item strong { color: var(--azul-principal); }
+        .rpm-display, .destacado {
+            font-size: 19px;
+            font-weight: bold;
+            color: var(--rojo-alerta);
+            display: block;
+            margin-top: 4px;
+        }
+        
+        .advertencia, .tip {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 14px;
+            font-style: italic;
+            background-color: var(--tip-bg);
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid var(--rojo-alerta);
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .color-dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 8px;
+            border: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .grupo-medida {
+            background-color: var(--input-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 14px;
+            border: 1px solid var(--border-color);
+        }
+        .titulo-seccion {
+            font-weight: bold;
+            color: var(--azul-principal);
+            border-bottom: 2px solid var(--verde-acento);
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .valor { font-weight: bold; }
+        .lista-materiales { margin: 10px 0 0 0; padding-left: 20px; font-size: 13.5px; }
+        .lista-materiales li { margin-bottom: 6px; }
+
+        .dos-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (max-width: 500px) {
+            .dos-columnas { grid-template-columns: 1fr; gap: 0; }
+            .radio-group { flex-direction: column; gap: 8px; }
+        }
+
+        /* MULTIMETRO */
+        .info-multimetro { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .dato-m {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14.5px;
+        }
+        .dato-m .label-m {
+            font-weight: bold;
+            color: var(--azul-principal);
+            display: block;
+            margin-bottom: 4px;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        /* TABLAS CABLES */
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+        .styled-table th, .styled-table td { border: 1px solid var(--border-color); padding: 10px; text-align: center; }
+        .styled-table th { background-color: var(--azul-principal); color: white; font-weight: bold; border-color: var(--azul-principal); }
+        .styled-table tr:nth-child(even) { background-color: var(--result-bg); }
+        .styled-table tr:hover { background-color: var(--theory-bg); }
+
+        /* ESTILOS GEOMETRÍA */
+        #tab-geometria .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        #tab-geometria .controls-row { display: flex; gap: 12px; margin-bottom: 5px; }
+        #tab-geometria .control-group { flex: 1; }
+        #tab-geometria .input-group { display: none; animation: fadeIn 0.4s ease-in-out; }
+        #tab-geometria .input-group.active { display: block; }
+        #tab-geometria .theory-box {
+            background: var(--theory-bg);
+            border-left: 4px solid var(--verde-acento);
+            padding: 12px 15px;
+            margin-top: 18px;
+            border-radius: 0 8px 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        #tab-geometria .theory-text { flex: 1; font-size: 13px; line-height: 1.4; color: var(--text-color); }
+        #tab-geometria .theory-text strong { color: var(--verde-acento); display: block; margin-bottom: 3px; font-size: 14.5px; }
+        #tab-geometria .theory-text ul { margin: 4px 0 0 0; padding-left: 16px; }
+        #tab-geometria .canvas-container {
+            width: 90px;
+            height: 90px;
+            background: var(--input-bg);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+        #tab-geometria canvas { width: 80px; height: 80px; }
+        #tab-geometria .results-geom {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--result-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            display: block; 
+        }
+        #tab-geometria .results-geom p {
+            margin: 6px 0;
+            font-size: 16px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 4px;
+        }
+        #tab-geometria .results-geom p:last-child { border-bottom: none; padding-bottom: 0; }
+        #tab-geometria .results-geom span.value { color: var(--verde-acento); font-weight: bold; font-size: 19px; }
+        #tab-geometria .results-geom span.unit { color: var(--text-muted); font-size: 12px; margin-left: 4px; }
+        #tab-geometria .error-msg {
+            color: var(--rojo-alerta);
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+            background: var(--tip-bg);
+            padding: 6px;
+            border-radius: 4px;
+            border-left: 2px solid var(--rojo-alerta);
+        }
+        #tab-geometria .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        #tab-geometria .btn-outline {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: 2px solid var(--azul-claro);
+            color: var(--azul-claro);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        #tab-geometria .btn-outline:hover { background: var(--azul-claro); color: #fff; }
+        #tab-geometria .btn-outline.btn-export { border-color: var(--rojo-alerta); color: var(--rojo-alerta); }
+        #tab-geometria .btn-outline.btn-export:hover { background: var(--rojo-alerta); color: #fff; }
+
+        #tab-geometria .history-section { margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 12px; }
+        #tab-geometria .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        #tab-geometria .history-section h3 { color: var(--text-muted); font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+        #tab-geometria .btn-clear { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; text-decoration: underline; }
+        #tab-geometria .btn-clear:hover { color: var(--rojo-alerta); }
+        #tab-geometria .history-list { list-style: none; padding: 0; margin: 0; }
+        #tab-geometria .history-list li {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            margin-bottom: 5px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border-left: 4px solid var(--verde-acento);
+            font-size: 11.5px;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        #tab-geometria .history-shape { color: var(--azul-claro); font-weight: bold; font-size: 12.5px; }
+        #tab-geometria .history-empty { text-align: center; font-size: 11.5px; color: var(--text-muted); opacity: 0.8; font-style: italic; border-left: none !important; }
+
+        /* ESQUEMAS DE MOTORES */
+        .motor-diagram-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .placa-terminales {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(2, 50px);
+            gap: 20px 30px;
+            background: #111827;
+            padding: 25px 35px;
+            border-radius: 12px;
+            border: 3px solid #374151;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .borne-terminal {
+            width: 32px;
+            height: 32px;
+            background: #fbbf24;
+            border-radius: 50%;
+            border: 4px solid #1f2937;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: #111827;
+            margin: auto;
+            z-index: 2;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+        .puente-metalico {
+            position: absolute;
+            background: #e76f51;
+            border-radius: 6px;
+            z-index: 1;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .etiqueta-fase {
+            margin-top: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--azul-principal);
+            text-align: center;
+            background: var(--theory-bg);
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px dashed var(--verde-acento);
+        }
+
+        .footer { text-align: center; margin-top: 35px; color: var(--text-muted); font-size: 0.88em; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <div class="header">
+        <h1>⚙️ Mantenimiento Cylitec</h1>
+        <p>Panel Central de Herramientas de Taller & Mecanizado</p>
+        <div class="header-controls">
+            <button id="wakeLockBtn" class="wake-lock-btn" title="Mantener Pantalla Encendida">📱</button>
+            <button id="globalThemeToggle" class="theme-toggle-btn" title="Cambiar Tema">☀️</button>
+        </div>
+    </div>
+
+    <!-- BUSCADOR RÁPIDO INTERNO -->
+    <div class="search-container">
+        <input type="text" id="buscadorRapido" class="search-input" placeholder="🔍 Buscar herramienta o sección rápidamente (ej. roscas, chavetas, motores, pesos)..." onkeyup="filtrarTabs()">
+    </div>
+
+    <div class="tabs" id="contenedorTabs">
+        <button class="tab-btn active" onclick="openTab('tab-rpm', this)">⚡ RPM</button>
+        <button class="tab-btn" onclick="openTab('tab-torno', this)">⚙️ Torno</button>
+        <button class="tab-btn" onclick="openTab('tab-rulemanes', this)">🔄 Rulemanes</button>
+        <button class="tab-btn" onclick="openTab('tab-seger', this)">⭕ Seger</button>
+        <button class="tab-btn" onclick="openTab('tab-roscas', this)">🔩 Roscas</button>
+        <button class="tab-btn" onclick="openTab('tab-multimetro', this)">🔌 Multímetro</button>
+        <button class="tab-btn" onclick="openTab('tab-electricidad', this)">⚡ Cables y Protecciones</button>
+        <button class="tab-btn" onclick="openTab('tab-geometria', this)">📐 Geometría</button>
+        <button class="tab-btn" onclick="openTab('tab-pesos', this)">⚖️ Pesos</button>
+        <button class="tab-btn" onclick="openTab('tab-tolerancias', this)">📐 Tolerancias</button>
+        <button class="tab-btn" onclick="openTab('tab-transmision', this)">⚙️ Transmisión</button>
+        <button class="tab-btn" onclick="openTab('tab-motores', this)">⚡ Motores</button>
+        <button class="tab-btn" onclick="openTab('tab-chavetas', this)">📏 Chavetas</button>
+        <button class="tab-btn" onclick="openTab('tab-conversor', this)">🔄 Conversor</button>
+        <button class="tab-btn" onclick="openTab('tab-colores', this)">🎨 Colores Eléctricos</button>
+    </div>
+
+    <!-- TAB 1: RPM -->
+    <div id="tab-rpm" class="card active">
+        <h2>Calculador de RPM Mecanizado</h2>
+        <label>1. Tipo de Herramienta</label>
+        <div class="radio-group">
+            <div class="radio-option selected" id="optMecha" onclick="seleccionarHerramienta('mecha')">
+                <input type="radio" name="herramienta" value="mecha" checked> 🔩 Mecha / Broca
+            </div>
+            <div class="radio-option" id="optFresa" onclick="seleccionarHerramienta('fresa')">
+                <input type="radio" name="herramienta" value="fresa"> ⚙️ Fresa (Milling)
+            </div>
+        </div>
+
+        <label for="material">2. Material de la Pieza</label>
+        <select id="material">
+            <option value="acero_suave">Acero Suave / SAE 1020 (Construcción)</option>
+            <option value="acero_duro">Acero Aleado / SAE 4140 - HSS (Duro)</option>
+            <option value="inoxidable">Acero Inoxidable (304 / 316)</option>
+            <option value="fundicion">Fundición Gris / Hierro Fundido</option>
+            <option value="aluminio">Aluminio / Bronce (Metales Blandos)</option>
+            <option value="plastico">Plásticos / Grilón / Delrin / Acrílico</option>
+        </select>
+
+        <label for="diametro">3. Diámetro de la Herramienta (mm)</label>
+        <input type="number" id="diametro" placeholder="Ej: 10, 12.5, 20" min="0.1" step="0.1" required>
+
+        <button class="action-btn" onclick="calcularRPM()">CALCULAR VELOCIDAD</button>
+
+        <div id="resBoxRpm" class="resultado">
+            <div class="resultado-item"><strong>⚙️ Velocidad de Corte Sugerida (Vc):</strong> <span id="resVc"></span> m/min</div>
+            <div class="resultado-item"><strong>🔄 Velocidad de Rotación Ideal:</strong> <span id="resRpm" class="rpm-display"></span></div>
+            <div class="resultado-item" id="consejoAvance"></div>
+            <div class="advertencia">💡 Nota: Si usas herramientas de metal duro (Insertos de Carburo), puedes duplicar o triplicar las RPM calculadas. Los valores mostrados son para herramientas de acero rápido (HSS). Usar siempre refrigerante en Aceros e Inoxidables.</div>
+        </div>
+    </div>
+
+    <!-- TAB 2: TORNO -->
+    <div id="tab-torno" class="card">
+        <h2>Configuración de Roscado CYPML-93201/D</h2>
+        
+        <label for="tipoTorno">1. Sistema de Medición</label>
+        <select id="tipoTorno" onchange="actualizarDiametrosTorno()">
+            <option value="metrica">Métrica (mm)</option>
+            <option value="pulgadas">Pulgadas (TPI)</option>
+        </select>
+
+        <div class="dos-columnas">
+            <div>
+                <label for="diametroTorno">2. Diámetro de Rosca</label>
+                <select id="diametroTorno" onchange="actualizarPasosTorno()"></select>
+            </div>
+            <div>
+                <label for="pasoTorno">3. Paso (Avance)</label>
+                <select id="pasoTorno"></select>
+            </div>
+        </div>
+
+        <button class="action-btn" onclick="calcularConfiguracionTorno()">CALCULAR POSICIONES Y PARÁMETROS</button>
+
+        <div id="resBoxTorno" class="resultado" style="border-left-color: var(--azul-claro);">
+            <div class="resultado-item"><strong>⚙️ Lira (Engranajes):</strong> <span id="resLira"></span></div>
+            <div class="resultado-item"><strong>🔴 Mando de Color:</strong> <span id="resColor"></span><span id="dotColor"></span></div>
+            <div class="resultado-item"><strong>🅰️ Letra / Rango:</strong> <span id="resLetra"></span></div>
+            <div class="resultado-item"><strong>🔢 Ranura Caja Norton:</strong> <span id="resNorton"></span></div>
+            
+            <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                <div class="resultado-item"><strong>📏 Diámetro a Tornear (Previo):</strong> <span id="resDiamTornear" class="destacado" style="color: var(--azul-claro); font-size: 18px;"></span></div>
+                <div class="resultado-item"><strong>⏬ Profundidad de Corte (Radial):</strong> <span id="resProfundidad"></span></div>
+                <div class="resultado-item"><strong>⏩ Avance para Roscar (Fijo):</strong> <span id="resAvanceRosca"></span></div>
+                <div class="resultado-item"><strong>🔄 RPM Sugeridas (Manual):</strong> <span id="resRpmRosca"></span></div>
+                <div class="resultado-item"><strong>📐 Ángulo Herramienta:</strong> <span id="resAnguloRosca"></span></div>
+            </div>
+        </div>
+
+        <hr style="border:1px solid var(--border-color); margin: 35px 0;">
+        
+        <h2>Cálculos de Cilindrado y Desbaste</h2>
+        <label for="materialTorno">1. Material de la Pieza</label>
+        <select id="materialTorno">
+            <option value="acero_suave">Acero Suave (SAE 1020 / 1045)</option>
+            <option value="acero_duro">Acero Aleado (SAE 4140 / 4340)</option>
+            <option value="inoxidable">Acero Inoxidable (304 / 316)</option>
+            <option value="fundicion">Fundición de Hierro</option>
+            <option value="aluminio">Aluminio / Bronce (Blandos)</option>
+            <option value="plastico">Plástico / Grilón / Delrin</option>
+        </select>
+
+        <div class="dos-columnas">
+            <div>
+                <label for="tipoOperacion">2. Operación</label>
+                <select id="tipoOperacion">
+                    <option value="desbaste">Desbaste (Roughing)</option>
+                    <option value="terminacion">Terminación (Finishing)</option>
+                </select>
+            </div>
+            <div>
+                <label for="diametroTornear">3. Diámetro a Tornear (mm)</label>
+                <input type="number" id="diametroTornear" placeholder="Ej: 50" min="0.1" step="0.1">
+            </div>
+        </div>
+
+        <button class="action-btn" onclick="calcularCilindrado()">CALCULAR PARÁMETROS</button>
+
+        <div id="resBoxCilindrado" class="resultado" style="border-left-color: var(--verde-acento);">
+            <div class="resultado-item"><strong>🔄 RPM Sugeridas:</strong> <span id="resRpmTorno" class="rpm-display" style="color:var(--verde-acento);"></span></div>
+            <div class="resultado-item"><strong>📏 Profundidad de Corte (Ap):</strong> <span id="resProfCorte"></span></div>
+            <div class="resultado-item"><strong>⏩ Avance para Cilindrar (f):</strong> <span id="resAvanceTorno"></span></div>
+            <div class="resultado-item"><strong>📐 Ángulo / Radio Herramienta:</strong> <span id="resAnguloHerr"></span></div>
+            <div class="advertencia">💡 <i>Valores base sugeridos para uso de insertos de metal duro (Carburo). Ajustar RPM y Avance según vibraciones de la máquina.</i></div>
+        </div>
+    </div>
+
+    <!-- TAB 3: RULEMANES -->
+    <div id="tab-rulemanes" class="card">
+        <h2>Calculadora de Rulemanes</h2>
+        <label for="lista-rodamientos">Seleccioná el modelo:</label>
+        <select id="lista-rodamientos">
+            <option value="">Elegir rodamiento...</option>
+            <optgroup label="Serie 6000 (Ligeros)">
+                <option value="6000">6000</option><option value="6001">6001</option><option value="6002">6002</option><option value="6003">6003</option><option value="6004">6004</option><option value="6005">6005</option><option value="6006">6006</option>
+            </optgroup>
+            <optgroup label="Serie 6200 (Medianos)">
+                <option value="6200">6200</option><option value="6201">6201</option><option value="6202">6202</option><option value="6203">6203</option><option value="6204">6204</option><option value="6205">6205</option><option value="6206">6206</option><option value="6207">6207</option>
+            </optgroup>
+            <optgroup label="Serie 6300 (Pesados)">
+                <option value="6300">6300</option><option value="6301">6301</option><option value="6302">6302</option><option value="6303">6303</option><option value="6304">6304</option><option value="6305">6305</option><option value="6306">6306</option><option value="6307">6307</option>
+            </optgroup>
+        </select>
+
+        <div class="resultado" id="caja-resultados-rod" style="border-left-color: var(--azul-principal); padding: 0; background: none; border-left-width: 0;">
+            <div class="grupo-medida">
+                <div class="titulo-seccion">EJE (Interior)</div>
+                <p>Medida Nominal: <span class="valor" id="res-eje"></span> mm</p>
+                <p>➔ Tornear eje a: <span class="destacado" id="res-eje-mec" style="color:var(--rojo-alerta); font-size: 17px;"></span> mm</p>
+            </div>
+            
+            <div class="grupo-medida">
+                <div class="titulo-seccion">ALOJAMIENTO (Exterior)</div>
+                <p>Medida Nominal: <span class="valor" id="res-alojamiento"></span> mm</p>
+                <p>➔ Tornear alojamiento a: <span class="destacado" id="res-aloj-mec" style="color:var(--rojo-alerta); font-size: 17px;"></span> mm</p>
+            </div>
+
+            <div class="grupo-medida">
+                <div class="titulo-seccion">DIMENSIONES GENERALES</div>
+                <p>Ancho del rodamiento: <span class="valor" id="res-ancho"></span> mm</p>
+            </div>
+
+            <div class="grupo-medida" style="background-color: var(--theory-bg); border-color: var(--verde-acento);">
+                <div class="titulo-seccion" style="color: var(--verde-acento); border-bottom-color: var(--verde-acento);">MATERIALES SUGERIDOS (EJE)</div>
+                <ul class="lista-materiales">
+                    <li><strong>Uso General:</strong> Acero SAE 1045.</li>
+                    <li><strong>Ambiente Náutico/Corrosivo:</strong> Inoxidable AISI 316L.</li>
+                    <li><strong>Alta Exigencia:</strong> Acero SAE 4140 o 4340.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: SEGER -->
+    <div id="tab-seger" class="card">
+        <h2>Dimensiones para Anillos Seger (Retención)</h2>
+        <label>1. Tipo de Montaje</label>
+        <div class="radio-group">
+            <div class="radio-option selected" id="optSegerEje" onclick="seleccionarSeger('eje')">
+                <input type="radio" name="tipoSeger" value="eje" checked> ⚙️ Eje (DIN 471)
+            </div>
+            <div class="radio-option" id="optSegerAloj" onclick="seleccionarSeger('alojamiento')">
+                <input type="radio" name="tipoSeger" value="alojamiento"> 🕳️ Alojamiento (DIN 472)
+            </div>
+        </div>
+        <label for="diametroSeger">2. Diámetro Nominal (mm)</label>
+        <select id="diametroSeger" onchange="calcularSeger()"></select>
+        <div class="resultado" id="caja-resultados-seger" style="border-left-color: var(--azul-principal); padding: 0; background: none; display: block; margin-top: 20px; border-left-width: 0;">
+            <div class="grupo-medida">
+                <div class="titulo-seccion">DIMENSIONES DE LA RANURA A TORNEAR</div>
+                <p>Diámetro de ranura (d2): <span class="destacado" id="res-seger-d2" style="color:var(--rojo-alerta); font-size: 17px;">-</span> mm</p>
+                <p>Ancho de ranura (m): <span class="valor" id="res-seger-m">-</span> mm</p>
+            </div>
+            <div class="grupo-medida">
+                <div class="titulo-seccion">ESPESOR DEL ANILLO</div>
+                <p>Anillo Seger estándar (s): <span class="valor" id="res-seger-s">-</span> mm</p>
+            </div>
+            <div class="grupo-medida" style="background-color: var(--theory-bg); border-color: var(--verde-acento);">
+                <div class="titulo-seccion" style="color: var(--verde-acento); border-bottom-color: var(--verde-acento);">TIP DE TALLER</div>
+                <p style="font-size: 13.5px; margin:0;">El fondo de la ranura debe estar libre de rebabas. Si torneas un eje, realiza un pequeño chaflán de entrada para que el Seger y el rodamiento entren sin rayar el material.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: ROSCAS -->
+    <div id="tab-roscas" class="card">
+        <h2>Mechas para Roscar</h2>
+        <label for="lista-machos">Seleccioná el macho (Rosca):</label>
+        <select id="lista-machos">
+            <option value="">Elegir medida...</option>
+            <optgroup label="Métrica (Paso Normal)">
+                <option value="M3">M3 x 0.50</option><option value="M4">M4 x 0.70</option>
+                <option value="M5">M5 x 0.80</option><option value="M6">M6 x 1.00</option>
+                <option value="M8">M8 x 1.25</option><option value="M10">M10 x 1.50</option>
+                <option value="M12">M12 x 1.75</option><option value="M14">M14 x 2.00</option>
+            </optgroup>
+            <optgroup label="Pulgadas (UNC - Rosca Gruesa)">
+                <option value="1/4-UNC">1/4" x 20 UNC</option><option value="5/16-UNC">5/16" x 18 UNC</option>
+                <option value="3/8-UNC">3/8" x 16 UNC</option><option value="7/16-UNC">7/16" x 14 UNC</option>
+                <option value="1/2-UNC">1/2" x 13 UNC</option>
+            </optgroup>
+            <optgroup label="Pulgadas (UNF - Rosca Fina)">
+                <option value="1/4-UNF">1/4" x 28 UNF</option><option value="5/16-UNF">5/16" x 24 UNF</option>
+                <option value="3/8-UNF">3/8" x 24 UNF</option><option value="1/2-UNF">1/2" x 20 UNF</option>
+            </optgroup>
+        </select>
+        <div class="resultado" id="caja-resultados-machos" style="border-left-color: var(--azul-principal); padding: 0; background: none; border-left-width: 0;">
+            <div class="grupo-medida">
+                <div class="titulo-seccion">TAMAÑO DE MECHA A UTILIZAR</div>
+                <p>Macho seleccionado: <span class="valor" id="res-rosca"></span></p>
+                <p>➔ Perforar con mecha de: <span class="destacado" id="res-mecha" style="color:var(--rojo-alerta); font-size: 17px;"></span> mm</p>
+            </div>
+            <div class="grupo-medida" style="background-color: var(--theory-bg); border-color: var(--verde-acento);">
+                <div class="titulo-seccion" style="color: var(--verde-acento); border-bottom-color: var(--verde-acento);">TIP DE TALLER</div>
+                <p style="font-size: 13.5px; margin:0;">Para roscas métricas, la fórmula rápida para saber la mecha es: <strong>Diámetro del macho - Paso de rosca</strong>. (Ej: M6 x 1.0 ➔ 6 - 1 = Mecha de 5 mm).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 6: MULTÍMETRO -->
+    <div id="tab-multimetro" class="card">
+        <h2>Guía Rápida: Uso del Multímetro</h2>
+        <label for="tipoMultimetro">1. ¿Qué magnitud deseas medir?</label>
+        <select id="tipoMultimetro" onchange="mostrarMultimetro()">
+            <option value="">Selecciona una medición...</option>
+            <option value="dcv">Voltaje Continuo (DCV / V⎓)</option>
+            <option value="acv">Voltaje Alterno (ACV / V~)</option>
+            <option value="continuidad">Continuidad / Circuito (Buzzer)</option>
+            <option value="resistencia">Resistencia (Ohmios / Ω)</option>
+            <option value="dca">Corriente Continua (Amperes / A⎓)</option>
+        </select>
+        <div class="resultado" id="caja-resultados-multimetro" style="display: none; background:none; padding:0; border:none;">
+            <h3 id="res-multi-titulo" style="color: var(--azul-principal); border-bottom: 2px solid var(--verde-acento); padding-bottom: 5px; margin-top: 15px;">-</h3>
+            <div class="info-multimetro">
+                <div class="dato-m">
+                    <span class="label-m">Configuración del Dial</span>
+                    <span id="res-multi-escala"></span>
+                </div>
+                <div class="dato-m">
+                    <span class="label-m">Conexión de Puntas</span>
+                    <span id="res-multi-cables"></span>
+                </div>
+                <div class="dato-m" style="border-left: 4px solid var(--verde-acento);">
+                    <span class="label-m">Ejemplo Práctico</span>
+                    <span id="res-multi-ejemplo"></span>
+                </div>
+                <div class="dato-m" style="background-color: var(--tip-bg); border-left: 4px solid var(--rojo-alerta);">
+                    <span class="label-m">Lectura Esperada</span>
+                    <span id="res-multi-lectura"></span>
+                </div>
+            </div>
+            <div class="advertencia" id="res-multi-tip"></div>
+        </div>
+    </div>
+
+    <!-- TAB 7: CABLES Y PROTECCIONES (MEJORADA E INTERACTIVA) -->
+    <div id="tab-electricidad" class="card">
+        <h2>Guía Eléctrica: Cables y Protecciones</h2>
+        
+        <!-- SELECTOR RÁPIDO INTERACTIVO -->
+        <div class="grupo-medida" style="border-color: var(--verde-acento);">
+            <div class="titulo-seccion" style="color: var(--verde-acento); border-bottom-color: var(--verde-acento);">⚡ SELECCIÓN RÁPIDA POR CONSUMO / APLICACIÓN</div>
+            <label for="selectConsumoElectrico">Seleccioná la carga o corriente estimada:</label>
+            <select id="selectConsumoElectrico" onchange="calcularGuiaElectrica()">
+                <option value="">Elegir consumo...</option>
+                <option value="10">Hasta 10 A (Iluminación / Electrónica básica)</option>
+                <option value="16">Hasta 16 A (Tomacorrientes de uso general - TUG)</option>
+                <option value="20">Hasta 20 A (Aire acondicionado / Motor mediano)</option>
+                <option value="32">Hasta 32 A (Tablero seccional / Máquinas de taller)</option>
+                <option value="40">Hasta 40 A (Entrada general / Paquete de máquinas)</option>
+            </select>
+
+            <div id="resBoxGuiaElectrica" class="resultado" style="display: none; border-left-color: var(--verde-acento); margin-top: 15px;">
+                <div class="resultado-item"><strong>📏 Sección de Cable Sugerida:</strong> <span id="resElecCable" class="valor" style="color: var(--verde-acento);"></span></div>
+                <div class="resultado-item"><strong>🔥 Térmica Recomendada (In):</strong> <span id="resElecTermica" class="destacado" style="font-size: 17px;"></span></div>
+                <div class="resultado-item"><strong>🛡️ Protección Diferencial:</strong> <span id="resElecDisyuntor"></span></div>
+            </div>
+        </div>
+
+        <div class="grupo-medida">
+            <div class="titulo-seccion">TABLA TÉCNICA DE REFERENCIA (Norma AEA)</div>
+            <p style="font-size: 13.5px; margin-bottom: 10px;">Valores para cables unifilares de cobre con aislación de PVC en ambiente normal de taller.</p>
+            <div style="overflow-x:auto;">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>Sección (mm²)</th>
+                            <th>Corriente Máx. (A)</th>
+                            <th>Térmica Recomendada</th>
+                            <th>Uso Típico en Taller</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>1.5 mm²</strong></td><td>~ 15 A</td><td style="color:var(--rojo-alerta); font-weight:bold;">10 A</td><td>Iluminación LED / Comandos</td></tr>
+                        <tr><td><strong>2.5 mm²</strong></td><td>~ 21 A</td><td style="color:var(--rojo-alerta); font-weight:bold;">16 A</td><td>Tomacorrientes de uso general</td></tr>
+                        <tr><td><strong>4.0 mm²</strong></td><td>~ 28 A</td><td style="color:var(--rojo-alerta); font-weight:bold;">20 A</td><td>Líneas de fuerza / Cargas medianas</td></tr>
+                        <tr><td><strong>6.0 mm²</strong></td><td>~ 36 A</td><td style="color:var(--rojo-alerta); font-weight:bold;">25 A - 32 A</td><td>Alimentación de máquinas / Bancos</td></tr>
+                        <tr><td><strong>10.0 mm²</strong></td><td>~ 50 A</td><td style="color:var(--rojo-alerta); font-weight:bold;">40 A</td><td>Tableros seccionales / Entrada</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="grupo-medida">
+            <div class="titulo-seccion">CRITERIO DE PROTECCIONES</div>
+            <div class="resultado-item" style="margin-top:10px; border-left: 4px solid var(--rojo-alerta); padding-left: 10px;">
+                <strong style="color: var(--rojo-alerta); font-size: 15px;">🔥 Llave Térmica (Termomagnética)</strong>
+                <p style="margin: 4px 0; font-size: 13.5px;">Protege al <b>conductor (cable)</b> de calentamientos por sobrecarga y cortocircuitos. Su valor nominal debe ser menor o igual a la corriente máxima admitida por el cable.</p>
+            </div>
+            <div class="resultado-item" style="margin-top:12px; border-left: 4px solid var(--verde-acento); padding-left: 10px;">
+                <strong style="color: var(--verde-acento); font-size: 15px;">🛡️ Disyuntor Diferencial</strong>
+                <p style="margin: 4px 0; font-size: 13.5px;">Protege a las <b>personas</b> ante contactos directos o indirectos detectando fugas a tierra (estándar de 30 mA).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 8: GEOMETRÍA PRO -->
+    <div id="tab-geometria" class="card">
+        <div class="card-header">
+            <h2>Calculadora Geométrica Pro</h2>
+        </div>
+        
+        <div class="controls-row">
+            <div class="control-group">
+                <label for="shapeSelect">Figura / Geometría:</label>
+                <select id="shapeSelect">
+                    <optgroup label="Figuras 2D">
+                        <option value="circle">Círculo</option>
+                        <option value="square">Cuadrado</option>
+                        <option value="rectangle">Rectángulo</option>
+                    </optgroup>
+                    <optgroup label="Triángulos">
+                        <option value="equilateral">Triángulo Equilátero</option>
+                        <option value="isosceles">Triángulo Isósceles</option>
+                        <option value="scalene">Triángulo Escaleno (3 lados)</option>
+                        <option value="pythagoras">Triángulo Rectángulo (Pitágoras)</option>
+                    </optgroup>
+                    <optgroup label="Figuras 3D & Compuestos">
+                        <option value="sphere">Esfera</option>
+                        <option value="cube">Cubo</option>
+                        <option value="hollowCylinder">Cilindro Hueco</option>
+                        <option value="cone">Cono</option>
+                        <option value="pyramid">Pirámide Base Cuadrada</option>
+                    </optgroup>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="modeSelect">Modo de Cálculo:</label>
+                <select id="modeSelect">
+                    <option value="direct">Directo (Área/Vol/Ángulos)</option>
+                    <option value="inverse">Inverso (Hallar Medida)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="controls-row" style="margin-top: 8px;">
+            <div class="control-group">
+                <label for="unitSelect">Unidad de medida:</label>
+                <select id="unitSelect">
+                    <option value="mm">Milímetros (mm)</option>
+                    <option value="cm">Centímetros (cm)</option>
+                    <option value="m">Metros (m)</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="directInputsContainer">
+            <div id="circleInputs" class="input-group active">
+                <label for="radius">Radio <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="radius" placeholder="Ej. 5" min="0" step="any">
+            </div>
+            <div id="squareInputs" class="input-group">
+                <label for="side">Lado <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="side" placeholder="Ej. 4" min="0" step="any">
+            </div>
+            <div id="rectangleInputs" class="input-group">
+                <label for="width">Base o Ancho <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="width" placeholder="Ej. 6" min="0" step="any">
+                <label for="height">Altura <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="height" placeholder="Ej. 3" min="0" step="any">
+            </div>
+            <div id="equilateralInputs" class="input-group">
+                <label for="equilateralSide">Lado <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="equilateralSide" placeholder="Ej. 5" min="0" step="any">
+            </div>
+            <div id="isoscelesInputs" class="input-group">
+                <label for="isoscelesBase">Base (Lado desigual) <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="isoscelesBase" placeholder="Ej. 4" min="0" step="any">
+                <label for="isoscelesSide">Lados iguales <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="isoscelesSide" placeholder="Ej. 5" min="0" step="any">
+                <div id="isoscelesError" class="error-msg">La suma de los lados iguales debe ser mayor que la base.</div>
+            </div>
+            <div id="scaleneInputs" class="input-group">
+                <label for="scaleneA">Lado A <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="scaleneA" placeholder="Ej. 3" min="0" step="any">
+                <label for="scaleneB">Lado B <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="scaleneB" placeholder="Ej. 5" min="0" step="any">
+                <label for="scaleneC">Lado C <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="scaleneC" placeholder="Ej. 7" min="0" step="any">
+                <div id="scaleneError" class="error-msg">Medidas inválidas para formar triángulo.</div>
+            </div>
+            <div id="pythagorasInputs" class="input-group">
+                <label for="catetoA">Cateto A - Base <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="catetoA" placeholder="Ej. 3" min="0" step="any">
+                <label for="catetoB">Cateto B - Altura <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="catetoB" placeholder="Ej. 4" min="0" step="any">
+            </div>
+            <div id="sphereInputs" class="input-group">
+                <label for="sphereRadius">Radio de la esfera <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="sphereRadius" placeholder="Ej. 5" min="0" step="any">
+            </div>
+            <div id="cubeInputs" class="input-group">
+                <label for="cubeSide">Lado o Arista <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="cubeSide" placeholder="Ej. 4" min="0" step="any">
+            </div>
+            <div id="hollowCylinderInputs" class="input-group">
+                <label for="outerRadius">Radio Exterior [R] <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="outerRadius" placeholder="Ej. 6" min="0" step="any">
+                <label for="innerRadius">Radio Interior [r] <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="innerRadius" placeholder="Ej. 4" min="0" step="any">
+                <div id="cylinderError" class="error-msg">El radio exterior debe ser mayor al interior.</div>
+                <label for="cylinderHeight">Altura [h] <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="cylinderHeight" placeholder="Ej. 10" min="0" step="any">
+            </div>
+            <div id="coneInputs" class="input-group">
+                <label for="coneRadius">Radio de la base [r] <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="coneRadius" placeholder="Ej. 3" min="0" step="any">
+                <label for="coneHeight">Altura [h] <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="coneHeight" placeholder="Ej. 4" min="0" step="any">
+            </div>
+            <div id="pyramidInputs" class="input-group">
+                <label for="pyramidBase">Lado de la base [b] <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="pyramidBase" placeholder="Ej. 4" min="0" step="any">
+                <label for="pyramidHeight">Altura [h] <span class="input-unit">(mm)</span>:</label>
+                <input type="number" id="pyramidHeight" placeholder="Ej. 6" min="0" step="any">
+            </div>
+        </div>
+
+        <div id="inverseInputsContainer" class="input-group">
+            <label for="inverseTargetValue" id="inverseTargetLabel">Valor objetivo:</label>
+            <input type="number" id="inverseTargetValue" placeholder="Ej. 100" min="0" step="any">
+            <div id="inverseExtraContainer"></div>
+            <div id="inverseError" class="error-msg">Valor objetivo inválido.</div>
+        </div>
+
+        <div class="theory-box">
+            <div class="canvas-container">
+                <canvas id="geomCanvas" width="160" height="160"></canvas>
+            </div>
+            <div id="theoryText" class="theory-text"></div>
+        </div>
+
+        <div class="results-geom">
+            <p id="primaryResultContainer">
+                <span id="primaryResultLabel">Resultado Principal</span>: <span><span id="mainResultValue" class="value">0.00</span><span id="mainResultUnit" class="unit">mm²</span></span>
+            </p>
+            <p id="secondaryResultContainer">
+                <span id="secondaryResultLabel">Secundario</span>: <span><span id="secondaryResultValue" class="value">0.00</span><span id="secondaryResultUnit" class="unit">mm</span></span>
+            </p>
+            <p id="tertiaryResultContainer" style="display: none;">
+                <span id="tertiaryResultLabel">Ángulos (A, B, C)</span>: <span><span id="tertiaryResultValue" class="value">0°</span></span>
+            </p>
+            <div class="btn-group">
+                <button id="saveBtn" class="btn-outline">Guardar</button>
+                <button id="exportBtn" class="btn-outline btn-export">Exportar PDF</button>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <div class="history-header">
+                <h3>Historial Reciente</h3>
+                <button id="clearHistoryBtn" class="btn-clear">Limpiar</button>
+            </div>
+            <ul id="historyList" class="history-list">
+                <li class="history-empty">Aún no hay registros guardados.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- TAB 9: PESOS DE MATERIALES -->
+    <div id="tab-pesos" class="card">
+        <h2>Calculadora de Peso de Materiales</h2>
+        <label for="pesoForma">1. Forma del Perfil</label>
+        <select id="pesoForma" onchange="cambiarFormaPeso()">
+            <option value="redondo">Barra Redonda (Macizo)</option>
+            <option value="tubo">Tubo / Buje (Redondo Hueco)</option>
+            <option value="chapa">Chapa / Placa / Rectangular</option>
+            <option value="cuadrado">Barra Cuadrada</option>
+        </select>
+
+        <label for="pesoMaterial">2. Material</label>
+        <select id="pesoMaterial">
+            <option value="7.85">Acero / Hierro (SAE 1020/4140) - 7.85 g/cm³</option>
+            <option value="8.00">Acero Inoxidable (AISI 304/316) - 8.00 g/cm³</option>
+            <option value="2.70">Aluminio - 2.70 g/cm³</option>
+            <option value="8.50">Bronce / Latón - 8.50 g/cm³</option>
+            <option value="1.15">Grilón / Nylon / PA6 - 1.15 g/cm³</option>
+            <option value="1.40">Delrin / POM - 1.40 g/cm³</option>
+        </select>
+
+        <div id="inputsPeso">
+            <div id="inputD1"><label>Diámetro Exterior (mm):</label><input type="number" id="pesoD1" placeholder="Ej: 50"></div>
+            <div id="inputD2" style="display:none;"><label>Diámetro Interior (mm):</label><input type="number" id="pesoD2" placeholder="Ej: 30"></div>
+            <div id="inputAncho" style="display:none;"><label>Ancho (mm):</label><input type="number" id="pesoAncho" placeholder="Ej: 100"></div>
+            <div><label>Largo Total (mm):</label><input type="number" id="pesoLargo" placeholder="Ej: 1000"></div>
+        </div>
+
+        <button class="action-btn" onclick="calcularPesoMaterial()">CALCULAR PESO</button>
+
+        <div id="resBoxPeso" class="resultado">
+            <div class="resultado-item"><strong>⚖️ Peso Estimado:</strong> <span id="resPesoKg" class="destacado"></span></div>
+            <div class="resultado-item"><strong>📦 Volumen Total:</strong> <span id="resVolCm3"></span> cm³</div>
+        </div>
+    </div>
+
+    <!-- TAB 10: TOLERANCIAS ISO H7 -->
+    <div id="tab-tolerancias" class="card">
+        <h2>Tolerancias de Ajuste ISO (H7)</h2>
+        <label for="tolMedida">1. Medida Nominal (mm)</label>
+        <input type="number" id="tolMedida" placeholder="Ej: 20, 35, 50" min="1" max="500">
+
+        <label for="tolAjuste">2. Tipo de Ajuste Deseado</label>
+        <select id="tolAjuste">
+            <option value="prensa">Prensa / Interferencia (Eje p6 / Alojamiento H7)</option>
+            <option value="deslizante">Deslizante Fino / Suave (Eje g6 / Alojamiento H7)</option>
+            <option value="libre">Holgado / Juego Libre (Eje f7 / Alojamiento H7)</option>
+        </select>
+
+        <button class="action-btn" onclick="calcularTolerancia()">VER COTAS Y TOLERANCIAS</button>
+
+        <div id="resBoxTol" class="resultado">
+            <div class="grupo-medida">
+                <div class="titulo-seccion">🕳️ ALOJAMIENTO (Hole H7)</div>
+                <p>Tolerancia: <span id="tolAlojMicras" class="valor"></span></p>
+                <p>➔ Cota para Alesado/Torno: <strong id="tolAlojCota" style="color:var(--azul-claro);"></strong></p>
+            </div>
+            <div class="grupo-medida">
+                <div class="titulo-seccion">⚙️ EJE (Shaft)</div>
+                <p>Tolerancia: <span id="tolEjeMicras" class="valor"></span></p>
+                <p>➔ Cota para Rectificado/Torno: <strong id="tolEjeCota" class="destacado"></strong></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 11: TRANSMISIÓN Y POLEAS -->
+    <div id="tab-transmision" class="card">
+        <h2>Cálculo de Poleas y Transmisión</h2>
+        <div class="dos-columnas">
+            <div>
+                <label for="rpmMotor">1. RPM Motor (Conductor)</label>
+                <input type="number" id="rpmMotor" placeholder="Ej: 1450, 2900">
+            </div>
+            <div>
+                <label for="dMotor">2. Diámetro Polea Motor (mm)</label>
+                <input type="number" id="dMotor" placeholder="Ej: 80">
+            </div>
+        </div>
+        <label for="dConducida">3. Diámetro Polea Conducida (mm)</label>
+        <input type="number" id="dConducida" placeholder="Ej: 160">
+
+        <button class="action-btn" onclick="calcularTransmision()">CALCULAR VELOCIDAD FINAL</button>
+
+        <div id="resBoxTrans" class="resultado">
+            <div class="resultado-item"><strong>🔄 Velocidad Final Eje:</strong> <span id="resRpmFinal" class="rpm-display"></span></div>
+            <div class="resultado-item"><strong>⚙️ Relación de Transmisión (i):</strong> <span id="resRelacionTrans"></span></div>
+            <div class="resultado-item"><strong>⚡ Velocidad Periférica Correa:</strong> <span id="resVelCorrea"></span> m/s</div>
+        </div>
+    </div>
+
+    <!-- TAB 12: DIAGRAMA MOTORES -->
+    <div id="tab-motores" class="card">
+        <h2>Guía Visual de Conexión de Motores</h2>
+        
+        <label for="selectTipoMotor">1. Seleccionar Configuración:</label>
+        <select id="selectTipoMotor" onchange="renderizarEsquemaMotor()">
+            <option value="triangulo">Trifásico: Conexión Triángulo (Δ)</option>
+            <option value="estrella">Trifásico: Conexión Estrella (Y)</option>
+            <option value="inversion">Trifásico: Inversión de Giro (Cambio de Fases)</option>
+            <option value="monofasico">Monofásico: Conexión con Capacitor</option>
+        </select>
+
+        <div class="motor-diagram-container">
+            <div style="font-weight: bold; color: var(--azul-principal); margin-bottom: 12px; font-size: 15px;" id="tituloEsquemaMotor">Triángulo (Δ)</div>
+            <div class="placa-terminales" id="lienzoBornera"></div>
+            <div class="etiqueta-fase" id="etiquetaAlimentacion">Alimentación Red: L1, L2, L3 (Inferior)</div>
+        </div>
+
+        <div class="advertencia" id="textoExplicativoMotor"></div>
+
+        <hr style="border:1px solid var(--border-color); margin: 30px 0;">
+
+        <h2>Cálculo Rápido de Corriente (Amperaje)</h2>
+        <div class="grupo-medida" style="background-color: var(--theory-bg); border-color: var(--verde-acento);">
+            <div class="titulo-seccion" style="color: var(--verde-acento); border-bottom-color: var(--verde-acento);">FÓRMULA TRIFÁSICA</div>
+            <p style="font-size: 13.5px; margin-bottom: 10px;">Estima la corriente nominal ($I_n$) para calibrar guardamotores o relés térmicos:</p>
+            <p style="text-align: center; font-size: 16px; margin: 15px 0;">$$I_n = \frac{P(W)}{\sqrt{3} \cdot V \cdot \cos(\varphi) \cdot \eta}$$</p>
+        </div>
+    </div>
+
+    <!-- NUEVA TAB 13: CHAVETEROS Y AJUSTES (DIN 6885) -->
+    <div id="tab-chavetas" class="card">
+        <h2>Calculador de Chavetas y Ejes (DIN 6885)</h2>
+        <label for="diametroEjeChaveta">Diámetro Nominal del Eje (mm):</label>
+        <input type="number" id="diametroEjeChaveta" placeholder="Ej: 24, 30, 45" min="6" max="500">
+
+        <button class="action-btn" onclick="calcularChaveta()">CALCULAR DIMENSIONES DE CHAVETA</button>
+
+        <div id="resBoxChaveta" class="resultado" style="border-left-color: var(--verde-acento);">
+            <div class="resultado-item"><strong>📏 Ancho de Chaveta (b):</strong> <span id="resChavetaB" class="valor" style="color:var(--verde-acento);"></span> mm</div>
+            <div class="resultado-item"><strong>📐 Alto de Chaveta (h):</strong> <span id="resChavetaH" class="valor"></span> mm</div>
+            <div class="resultado-item"><strong>⏬ Profundidad ranura en Eje ($t_1$):</strong> <span id="resChavetaT1"></span> mm</div>
+            <div class="resultado-item"><strong>🕳️ Profundidad ranura en Cubo ($t_2$):</strong> <span id="resChavetaT2"></span> mm</div>
+            <div class="advertencia">💡 <i>Normativa DIN 6885 para chavetas paralelas con extremos redondeados (Forma A).</i></div>
+        </div>
+    </div>
+
+    <!-- NUEVA TAB 14: CONVERSOR DE UNIDADES DE TALLER -->
+    <div id="tab-conversor" class="card">
+        <h2>Conversor Rápido de Taller</h2>
+        <label for="tipoConversor">Magnitud a Convertir:</label>
+        <select id="tipoConversor" onchange="actualizarCamposConversor()">
+            <option value="torque">Torque / Par de Apriete</option>
+            <option value="presion">Presión (Neumática / Hidráulica)</option>
+            <option value="potencia">Potencia de Motores</option>
+        </select>
+
+        <div class="dos-columnas" style="margin-top: 15px;">
+            <div>
+                <label id="labelValorOrigen">Valor (Nm):</label>
+                <input type="number" id="valorOrigenConv" placeholder="Ej: 50" step="any" oninput="convertirUnidades()">
+            </div>
+            <div>
+                <label>Unidad de Destino:</label>
+                <select id="unidadDestinoConv" onchange="convertirUnidades()"></select>
+            </div>
+        </div>
+
+        <div class="resultado" id="resBoxConversor" style="border-left-color: var(--azul-claro); display: block;">
+            <div class="resultado-item"><strong>📊 Resultado de Conversión:</strong> <span id="resValorConv" class="destacado" style="color: var(--azul-claro);">0.00</span></div>
+        </div>
+    </div>
+
+    <!-- NUEVA TAB 15: CÓDIGOS DE COLORES ELÉCTRICOS -->
+    <div id="tab-colores" class="card">
+        <h2>Guía de Colores Eléctricos (Norma AEA / IEC)</h2>
+        <div class="grupo-medida">
+            <div class="titulo-seccion">SISTEMA TRIFÁSICO Y MONOFÁSICO</div>
+            <ul class="lista-materiales">
+                <li><span class="color-dot" style="background:#8b4513;"></span> <strong>Fase 1 (R):</strong> Marrón</li>
+                <li><span class="color-dot" style="background:#000000;"></span> <strong>Fase 2 (S):</strong> Negro</li>
+                <li><span class="color-dot" style="background:#ff0000;"></span> <strong>Fase 3 (T):</strong> Rojo</li>
+                <li><span class="color-dot" style="background:#00b4d8;"></span> <strong>Neutro (N):</strong> Celeste / Azul claro</li>
+                <li><span class="color-dot" style="background:linear-gradient(90deg, #008000 50%, #ffd700 50%);"></span> <strong>Protección (PE / Tierra):</strong> Verde y Amarilla</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer">
+        Desarrollado por Diego Castro para uso interno de Cylitec.
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- SCRIPTS COMPLETOS DE TALLER                                    -->
+<!-- ============================================================== -->
+<script>
+    // BUSCADOR RÁPIDO DE PESTAÑAS
+    function filtrarTabs() {
+        const filtro = document.getElementById('buscadorRapido').value.toLowerCase();
+        const botones = document.querySelectorAll('#contenedorTabs .tab-btn');
+        botones.forEach(btn => {
+            const texto = btn.textContent.toLowerCase();
+            if (texto.includes(filtro)) {
+                btn.style.display = 'inline-block';
+            } else {
+                btn.style.display = 'none';
+            }
+        });
+    }
+
+    // NAVEGACIÓN TABS
+    function openTab(tabId, element) {
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        if (element) element.classList.add('active');
+    }
+
+    // MODO OSCURO GLOBAL
+    const themeBtn = document.getElementById('globalThemeToggle');
+    function updateThemeIcon() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        themeBtn.textContent = isDark ? '☀️' : '🌙';
+        if (typeof drawCanvas === 'function') drawCanvas();
+    }
+    updateThemeIcon();
+    themeBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (isDark) {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('cylitec_theme', 'light');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('cylitec_theme', 'dark');
+        }
+        updateThemeIcon();
+    });
+
+    // WAKE LOCK
+    let wakeLock = null;
+    const wakeBtn = document.getElementById('wakeLockBtn');
+    async function toggleWakeLock() {
+        if ('wakeLock' in navigator) {
+            try {
+                if (!wakeLock) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeBtn.classList.add('active');
+                    alert("📱 Pantalla encendida permanente activada.");
+                } else {
+                    await wakeLock.release();
+                    wakeLock = null;
+                    wakeBtn.classList.remove('active');
+                    alert("📱 Modo normal de pantalla restaurado.");
+                }
+            } catch (err) { alert("Error activando bloqueo: " + err.message); }
+        } else { alert("Tu navegador no soporta Screen Wake Lock."); }
+    }
+    wakeBtn.addEventListener('click', toggleWakeLock);
+
+    // TAB 1: RPM
+    const velocidadesCorte = {
+        mecha: { acero_suave: 25, acero_duro: 15, inoxidable: 10, fundicion: 20, aluminio: 60, plastico: 50 },
+        fresa: { acero_suave: 30, acero_duro: 18, inoxidable: 12, fundicion: 22, aluminio: 90, plastico: 70 }
+    };
+    function seleccionarHerramienta(tipo) {
+        document.getElementById('optMecha').classList.remove('selected');
+        document.getElementById('optFresa').classList.remove('selected');
+        if (tipo === 'mecha') {
+            document.getElementById('optMecha').classList.add('selected');
+            document.querySelector('input[value="mecha"]').checked = true;
+        } else {
+            document.getElementById('optFresa').classList.add('selected');
+            document.querySelector('input[value="fresa"]').checked = true;
+        }
+    }
+    function calcularRPM() {
+        const tipoHerramienta = document.querySelector('input[name="herramienta"]:checked').value;
+        const material = document.getElementById('material').value;
+        const diametro = parseFloat(document.getElementById('diametro').value);
+
+        if (isNaN(diametro) || diametro <= 0) {
+            alert("Por favor, ingrese un diámetro válido mayor a 0.");
+            return;
+        }
+
+        const Vc = velocidadesCorte[tipoHerramienta][material];
+        let rpm = Math.round((Vc * 1000) / (Math.PI * diametro));
+
+        document.getElementById('resVc').textContent = Vc;
+        document.getElementById('resRpm').textContent = rpm + " RPM";
+
+        let consejoText = tipoHerramienta === 'mecha' 
+            ? `<strong>➡️ Avance estimado:</strong> aprox. <strong>${(diametro * 0.02).toFixed(2)} mm/rev</strong>. Use avance lento e intermitente para romper la viruta en diámetros grandes.`
+            : `<strong>➡️ Consejo de Fresado:</strong> Controle que el sentido de giro concuerde con el filo de los dientes de la fresa. Evite vibraciones sujetando firmemente la pieza.`;
+            
+        document.getElementById('consejoAvance').innerHTML = consejoText;
+        document.getElementById('resBoxRpm').style.display = "block";
+    }
+
+    // TAB 2: TORNO
+    const configTorno = {
+        metrica: {
+            0.50: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - I", norton: "4 (Reducido)"},
+            0.70: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "A - I", norton: "2"},
+            0.80: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "A - I", norton: "6"},
+            1.00: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - I", norton: "9"},
+            1.25: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - I", norton: "4"},
+            1.50: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - I", norton: "8"},
+            1.75: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - I", norton: "11"},
+            2.00: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - II", norton: "4"},
+            2.25: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - II", norton: "2"},
+            2.50: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - II", norton: "5"},
+            3.00: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - II", norton: "8"},
+            3.50: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - II", norton: "11"},
+            4.00: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - III", norton: "5"},
+            4.50: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - III", norton: "2"},
+            5.00: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - III", norton: "4"},
+            6.00: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - III", norton: "8"},
+            7.00: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "B - III", norton: "11"}
+        },
+        pulgadas: {
+            8: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "II", norton: "15"},
+            9: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "II", norton: "14"},
+            10: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "II", norton: "13"},
+            11: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "II", norton: "11"},
+            11.5: {lira: "Z=82 / Z=69", color: "Azul", hex: "#0000ff", letra: "II", norton: "6"},
+            12: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "II", norton: "8"},
+            13: {lira: "Z=82 / Z=78", color: "Amarillo", hex: "#ffff00", letra: "II", norton: "6"},
+            14: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "II", norton: "6"},
+            16: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "I", norton: "15"},
+            18: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "I", norton: "14"},
+            19: {lira: "Z=82 / Z=114", color: "Rojo", hex: "#ff0000", letra: "II", norton: "6"},
+            20: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "I", norton: "13"},
+            22: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "I", norton: "11"},
+            24: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "I", norton: "8"},
+            28: {lira: "Z=82 / Z=81", color: "Azul", hex: "#0000ff", letra: "I", norton: "6"}
+        }
+    };
+
+    const diametrosTorno = {
+        metrica: {
+            "Cualquiera (Solo elegir paso)": [0.5, 0.7, 0.8, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0],
+            "M3": [0.5], "M4": [0.7], "M5": [0.8], "M6": [1.0],
+            "M8": [1.25, 1.0], "M10": [1.5, 1.25, 1.0], "M12": [1.75, 1.5, 1.25],
+            "M14": [2.0, 1.5], "M16": [2.0, 1.5], "M18": [2.5, 1.5],
+            "M20": [2.5, 1.5], "M22": [2.5, 1.5], "M24": [3.0, 2.0],
+            "M27": [3.0, 2.0], "M30": [3.5, 2.0]
+        },
+        pulgadas: {
+            "Cualquiera (Solo elegir TPI)": [8, 9, 10, 11, 11.5, 12, 13, 14, 16, 18, 19, 20, 22, 24, 28],
+            '1/4"': [20, 28], '5/16"': [18, 24], '3/8"': [16, 24],
+            '7/16"': [14, 20], '1/2"': [13, 20], '9/16"': [12, 18],
+            '5/8"': [11, 18], '3/4"': [10, 16], '7/8"': [9, 14], '1"': [8, 12]
+        }
+    };
+
+    function actualizarDiametrosTorno() {
+        const tipo = document.getElementById("tipoTorno").value;
+        const selectDiametro = document.getElementById("diametroTorno");
+        selectDiametro.innerHTML = "";
+        Object.keys(diametrosTorno[tipo]).forEach(diam => {
+            let el = document.createElement("option"); el.textContent = diam; el.value = diam; selectDiametro.appendChild(el);
+        });
+        actualizarPasosTorno();
+    }
+
+    function actualizarPasosTorno() {
+        const tipo = document.getElementById("tipoTorno").value;
+        const diam = document.getElementById("diametroTorno").value;
+        const selectPaso = document.getElementById("pasoTorno");
+        selectPaso.innerHTML = "";
+        const pasos = diametrosTorno[tipo][diam];
+        if (!pasos) return;
+        pasos.forEach((pasoVal, index) => {
+            let el = document.createElement("option"); el.value = pasoVal;
+            if (diam.includes("Cualquiera")) {
+                el.textContent = tipo === 'metrica' ? pasoVal.toFixed(2) + ' mm' : pasoVal + ' TPI';
+            } else {
+                let sufijo = (index === 0) ? " (Normal/UNC)" : " (Fino/UNF)";
+                let baseText = tipo === 'metrica' ? pasoVal.toFixed(2) + ' mm' : pasoVal + ' TPI';
+                el.textContent = baseText + sufijo;
+            }
+            selectPaso.appendChild(el);
+        });
+    }
+
+    function calcularConfiguracionTorno() {
+        const tipo = document.getElementById("tipoTorno").value;
+        const paso = parseFloat(document.getElementById("pasoTorno").value);
+        const diamStr = document.getElementById("diametroTorno").value;
+        const config = configTorno[tipo][paso];
+        if(config) {
+            document.getElementById("resLira").textContent = config.lira;
+            document.getElementById("resColor").textContent = " " + config.color;
+            document.getElementById("resLetra").textContent = config.letra;
+            document.getElementById("resNorton").textContent = config.norton;
+            const dot = document.getElementById("dotColor");
+            dot.className = "color-dot"; dot.style.backgroundColor = config.hex;
+            
+            let pasoMM = tipo === 'metrica' ? paso : 25.4 / paso;
+            let dNominal = 0;
+            if (diamStr.includes("Cualquiera")) {
+                dNominal = 0; 
+            } else if (tipo === 'metrica') {
+                dNominal = parseFloat(diamStr.replace("M", ""));
+            } else {
+                let str = diamStr.replace('"', '');
+                if (str.includes('/')) {
+                    let parts = str.split('/'); dNominal = (parseFloat(parts[0]) / parseFloat(parts[1])) * 25.4;
+                } else {
+                    dNominal = parseFloat(str) * 25.4;
+                }
+            }
+
+            if (dNominal > 0) {
+                let dTornear = dNominal - (pasoMM * 0.1);
+                document.getElementById("resDiamTornear").textContent = dTornear.toFixed(2) + " mm";
+            } else { document.getElementById("resDiamTornear").textContent = "Depende del tornillo (Elegir modelo)"; }
+
+            let prof = tipo === "metrica" ? (0.6134 * paso) : (0.6403 * pasoMM);
+            document.getElementById("resProfundidad").textContent = prof.toFixed(2) + " mm por pasada total al fondo";
+            document.getElementById("resAvanceRosca").textContent = pasoMM.toFixed(2) + " mm/rev";
+
+            if (dNominal > 0) {
+                let rpmSugerida = Math.round((12 * 1000) / (Math.PI * dNominal));
+                if (rpmSugerida > 300) rpmSugerida = 300;
+                document.getElementById("resRpmRosca").textContent = Math.max(30, (rpmSugerida - 20)) + " a " + (rpmSugerida + 20) + " RPM";
+            } else { document.getElementById("resRpmRosca").textContent = "Bajas (Ej: 60 - 150 RPM)"; }
+            document.getElementById("resAnguloRosca").textContent = tipo === 'metrica' ? "60° (Plantilla Métrica)" : "60° (UNC/UNF) o 55° (Whitworth/BSW)";
+            document.getElementById("resBoxTorno").style.display = "block";
+        }
+    }
+    actualizarDiametrosTorno();
+
+    const parametrosCilindrado = {
+        acero_suave: { vcDes: 120, vcTer: 160 }, acero_duro:  { vcDes: 80,  vcTer: 110 },
+        inoxidable:  { vcDes: 90,  vcTer: 120 }, fundicion:   { vcDes: 100, vcTer: 130 },
+        aluminio:    { vcDes: 250, vcTer: 350 }, plastico:    { vcDes: 300, vcTer: 400 }
+    };
+    function calcularCilindrado() {
+        const material = document.getElementById("materialTorno").value;
+        const operacion = document.getElementById("tipoOperacion").value;
+        const diametro = parseFloat(document.getElementById("diametroTornear").value);
+        if (isNaN(diametro) || diametro <= 0) return alert("Por favor, ingrese el diámetro de la pieza a tornear.");
+
+        const dataMat = parametrosCilindrado[material];
+        const Vc = operacion === 'desbaste' ? dataMat.vcDes : dataMat.vcTer;
+        const rpm = Math.round((Vc * 1000) / (Math.PI * diametro));
+        const profCorte = operacion === 'desbaste' ? "1.5 mm a 3.0 mm (Según potencia)" : "0.2 mm a 0.5 mm";
+        const avance = operacion === 'desbaste' ? "0.20 a 0.35 mm/rev" : "0.05 a 0.12 mm/rev";
+        
+        let anguloText = "90° a 95° de posición (Ej: Inserto WNMG, CNMG). ";
+        anguloText += operacion === 'desbaste' ? "Radio punta: 0.8mm." : "Radio punta: 0.4mm.";
+
+        document.getElementById("resRpmTorno").textContent = rpm;
+        document.getElementById("resProfCorte").textContent = profCorte;
+        document.getElementById("resAvanceTorno").textContent = avance;
+        document.getElementById("resAnguloHerr").textContent = anguloText;
+        document.getElementById("resBoxCilindrado").style.display = "block";
+    }
+
+    // TAB 3: RULEMANES
+    const bdRodamientos = {
+        "6000": { eje: 10, ejeMec: "10.001 a 10.012", alojamiento: 26, alojMec: "25.991 a 26.012", ancho: 8 },
+        "6001": { eje: 12, ejeMec: "12.001 a 12.012", alojamiento: 28, alojMec: "27.991 a 28.012", ancho: 8 },
+        "6002": { eje: 15, ejeMec: "15.001 a 15.012", alojamiento: 32, alojMec: "31.991 a 32.012", ancho: 9 },
+        "6003": { eje: 17, ejeMec: "17.001 a 17.012", alojamiento: 35, alojMec: "34.991 a 35.012", ancho: 10 },
+        "6004": { eje: 20, ejeMec: "20.002 a 20.015", alojamiento: 42, alojMec: "41.989 a 42.014", ancho: 12 },
+        "6005": { eje: 25, ejeMec: "25.002 a 25.015", alojamiento: 47, alojMec: "46.989 a 47.014", ancho: 12 },
+        "6006": { eje: 30, ejeMec: "30.002 a 30.015", alojamiento: 55, alojMec: "54.989 a 55.014", ancho: 13 },
+        "6200": { eje: 10, ejeMec: "10.001 a 10.012", alojamiento: 30, alojMec: "29.991 a 30.012", ancho: 9 },
+        "6201": { eje: 12, ejeMec: "12.001 a 12.012", alojamiento: 32, alojMec: "31.991 a 32.012", ancho: 10 },
+        "6202": { eje: 15, ejeMec: "15.001 a 15.012", alojamiento: 35, alojMec: "34.991 a 35.012", ancho: 11 },
+        "6203": { eje: 17, ejeMec: "17.001 a 17.012", alojamiento: 40, alojMec: "39.989 a 40.014", ancho: 12 },
+        "6204": { eje: 20, ejeMec: "20.002 a 20.015", alojamiento: 47, alojMec: "46.989 a 47.014", ancho: 14 },
+        "6205": { eje: 25, ejeMec: "25.002 a 25.015", alojamiento: 52, alojMec: "51.988 a 52.018", ancho: 15 },
+        "6206": { eje: 30, ejeMec: "30.002 a 30.015", alojamiento: 62, alojMec: "61.988 a 62.018", ancho: 16 },
+        "6207": { eje: 35, ejeMec: "35.002 a 35.015", alojamiento: 72, alojMec: "71.988 a 72.018", ancho: 17 },
+        "6300": { eje: 10, ejeMec: "10.001 a 10.012", alojamiento: 35, alojMec: "34.991 a 35.012", ancho: 11 },
+        "6301": { eje: 12, ejeMec: "12.001 a 12.012", alojamiento: 37, alojMec: "36.991 a 37.012", ancho: 12 },
+        "6302": { eje: 15, ejeMec: "15.001 a 15.012", alojamiento: 42, alojMec: "41.989 a 42.014", ancho: 13 },
+        "6303": { eje: 17, ejeMec: "17.001 a 17.012", alojamiento: 47, alojMec: "46.989 a 47.014", ancho: 14 },
+        "6304": { eje: 20, ejeMec: "20.002 a 20.015", alojamiento: 52, alojMec: "51.988 a 52.018", ancho: 15 },
+        "6305": { eje: 25, ejeMec: "25.002 a 25.015", alojamiento: 62, alojMec: "61.988 a 62.018", ancho: 17 },
+        "6306": { eje: 30, ejeMec: "30.002 a 30.015", alojamiento: 72, alojMec: "71.988 a 72.018", ancho: 19 },
+        "6307": { eje: 35, ejeMec: "35.002 a 35.015", alojamiento: 80, alojMec: "79.988 a 80.018", ancho: 21 }
+    };
+    document.getElementById('lista-rodamientos').addEventListener('change', function() {
+        const mod = this.value;
+        const cajaRod = document.getElementById('caja-resultados-rod');
+        if (mod && bdRodamientos[mod]) {
+            document.getElementById('res-eje').textContent = bdRodamientos[mod].eje;
+            document.getElementById('res-eje-mec').textContent = bdRodamientos[mod].ejeMec;
+            document.getElementById('res-alojamiento').textContent = bdRodamientos[mod].alojamiento;
+            document.getElementById('res-aloj-mec').textContent = bdRodamientos[mod].alojMec;
+            document.getElementById('res-ancho').textContent = bdRodamientos[mod].ancho;
+            cajaRod.style.display = 'block';
+        } else { cajaRod.style.display = 'none'; }
+    });
+
+    // TAB 4: SEGER
+    const bdSeger = {
+        eje: { 
+            "10": { d2: "9.6", m: "1.10", s: "1.00" }, "12": { d2: "11.5", m: "1.10", s: "1.00" },
+            "14": { d2: "13.4", m: "1.10", s: "1.00" }, "15": { d2: "14.3", m: "1.10", s: "1.00" },
+            "16": { d2: "15.2", m: "1.10", s: "1.00" }, "17": { d2: "16.2", m: "1.10", s: "1.00" },
+            "20": { d2: "19.0", m: "1.30", s: "1.20" }, "22": { d2: "21.0", m: "1.30", s: "1.20" },
+            "25": { d2: "23.9", m: "1.30", s: "1.20" }, "28": { d2: "26.6", m: "1.60", s: "1.50" },
+            "30": { d2: "28.6", m: "1.60", s: "1.50" }, "32": { d2: "30.3", m: "1.60", s: "1.50" },
+            "35": { d2: "33.0", m: "1.60", s: "1.50" }, "40": { d2: "37.5", m: "1.85", s: "1.75" },
+            "45": { d2: "42.5", m: "1.85", s: "1.75" }, "50": { d2: "47.0", m: "2.15", s: "2.00" }
+        },
+        alojamiento: { 
+            "10": { d2: "10.4", m: "1.10", s: "1.00" }, "12": { d2: "12.5", m: "1.10", s: "1.00" },
+            "14": { d2: "14.6", m: "1.10", s: "1.00" }, "15": { d2: "15.7", m: "1.10", s: "1.00" },
+            "16": { d2: "16.8", m: "1.10", s: "1.00" }, "17": { d2: "17.8", m: "1.10", s: "1.00" },
+            "20": { d2: "21.0", m: "1.10", s: "1.00" }, "22": { d2: "23.0", m: "1.10", s: "1.00" },
+            "25": { d2: "26.2", m: "1.30", s: "1.20" }, "28": { d2: "29.4", m: "1.30", s: "1.20" },
+            "30": { d2: "31.4", m: "1.30", s: "1.20" }, "32": { d2: "33.7", m: "1.30", s: "1.20" },
+            "35": { d2: "37.0", m: "1.60", s: "1.50" }, "40": { d2: "42.5", m: "1.85", s: "1.75" },
+            "45": { d2: "47.5", m: "1.85", s: "1.75" }, "50": { d2: "53.0", m: "2.15", s: "2.00" }
+        }
+    };
+    function seleccionarSeger(tipo) {
+        document.getElementById('optSegerEje').classList.remove('selected');
+        document.getElementById('optSegerAloj').classList.remove('selected');
+        if (tipo === 'eje') {
+            document.getElementById('optSegerEje').classList.add('selected');
+            document.querySelector('input[name="tipoSeger"][value="eje"]').checked = true;
+        } else {
+            document.getElementById('optSegerAloj').classList.add('selected');
+            document.querySelector('input[name="tipoSeger"][value="alojamiento"]').checked = true;
+        }
+        actualizarSelectSeger();
+    }
+    function actualizarSelectSeger() {
+        const tipo = document.querySelector('input[name="tipoSeger"]:checked').value;
+        const select = document.getElementById("diametroSeger"); select.innerHTML = "";
+        Object.keys(bdSeger[tipo]).forEach(diam => {
+            let el = document.createElement("option"); el.value = diam; el.textContent = diam + " mm"; select.appendChild(el);
+        });
+        calcularSeger();
+    }
+    function calcularSeger() {
+        const tipo = document.querySelector('input[name="tipoSeger"]:checked').value;
+        const diam = document.getElementById("diametroSeger").value;
+        const datos = bdSeger[tipo][diam];
+        if (datos) {
+            document.getElementById('res-seger-d2').textContent = datos.d2;
+            document.getElementById('res-seger-m').textContent = datos.m;
+            document.getElementById('res-seger-s').textContent = datos.s;
+        }
+    }
+    actualizarSelectSeger();
+
+    // TAB 5: MACHOS ROSCAR
+    const bdMachos = {
+        "M3": { rosca: 'M3 x 0.50', mecha: "2.5" }, "M4": { rosca: 'M4 x 0.70', mecha: "3.3" }, 
+        "M5": { rosca: 'M5 x 0.80', mecha: "4.2" }, "M6": { rosca: 'M6 x 1.00', mecha: "5.0" }, 
+        "M8": { rosca: 'M8 x 1.25', mecha: "6.8" }, "M10": { rosca: 'M10 x 1.50', mecha: "8.5" },
+        "M12": { rosca: 'M12 x 1.75', mecha: "10.2" }, "M14": { rosca: 'M14 x 2.00', mecha: "12.0" },
+        "1/4-UNC": { rosca: '1/4" x 20 UNC', mecha: "5.1" }, "5/16-UNC": { rosca: '5/16" x 18 UNC', mecha: "6.6" },
+        "3/8-UNC": { rosca: '3/8" x 16 UNC', mecha: "8.0" }, "7/16-UNC": { rosca: '7/16" x 14 UNC', mecha: "9.4" },
+        "1/2-UNC": { rosca: '1/2" x 13 UNC', mecha: "10.8" },
+        "1/4-UNF": { rosca: '1/4" x 28 UNF', mecha: "5.5" }, "5/16-UNF": { rosca: '5/16" x 24 UNF', mecha: "6.9" },
+        "3/8-UNF": { rosca: '3/8" x 24 UNF', mecha: "8.5" }, "1/2-UNF": { rosca: '1/2" x 20 UNF', mecha: "11.5" }
+    };
+    document.getElementById('lista-machos').addEventListener('change', function() {
+        const mod = this.value;
+        const cajaMach = document.getElementById('caja-resultados-machos');
+        if (mod && bdMachos[mod]) {
+            document.getElementById('res-rosca').textContent = bdMachos[mod].rosca;
+            document.getElementById('res-mecha').textContent = bdMachos[mod].mecha;
+            cajaMach.style.display = 'block';
+        } else { cajaMach.style.display = 'none'; }
+    });
+
+    // TAB 6: MULTÍMETRO
+    const bdMultimetro = {
+        "dcv": {
+            titulo: "Voltaje Continuo (V⎓ / DCV)", cables: "Punta ROJA en [VΩmA] • Punta NEGRA en [COM]",
+            escala: "Selector en 20V (si no es autorango).", ejemplo: "Batería de 12V.",
+            lectura: "Reposo: <strong>12.6V</strong>. Con motor en marcha: <strong>13.8V a 14.4V</strong>.",
+            tip: "💡 Si conectas las puntas al revés, la pantalla mostrará signo menos (ej: -12.6V)."
+        },
+        "acv": {
+            titulo: "Voltaje Alterno (V~ / ACV)", cables: "Punta ROJA en [VΩmA] • Punta NEGRA en [COM]",
+            escala: "Selector en 600V o 750V (siempre mayor a la red).", ejemplo: "Tomacorriente de taller.",
+            lectura: "Aproximadamente <strong>220V</strong> a <strong>230V</strong>.",
+            tip: "⚠️ Nunca toques las puntas metálicas con los dedos al medir alterna."
+        },
+        "continuidad": {
+            titulo: "Continuidad (Buzzer / Diodo)", cables: "Punta ROJA en [VΩmA] • Punta NEGRA en [COM]",
+            escala: "Selector en símbolo de Continuidad.", ejemplo: "Revisar fusibles o cables cortados.",
+            lectura: "Si está SANO: Suena un <strong>'BEEP'</strong>. Si está CORTADO: No suena.",
+            tip: "⚠️ Jamás midas continuidad en un circuito energizado."
+        },
+        "resistencia": {
+            titulo: "Resistencia (Ohmios / Ω)", cables: "Punta ROJA en [VΩmA] • Punta NEGRA en [COM]",
+            escala: "Selector en 200Ω, 2kΩ, 20kΩ.", ejemplo: "Medir sensor de temperatura.",
+            lectura: "Valor del componente en pantalla.",
+            tip: "💡 Realizar esta medición siempre con el circuito desenergizado."
+        },
+        "dca": {
+            titulo: "Corriente Continua (Amperios / A⎓)", cables: "Punta ROJA en <strong>[10A]</strong> • Punta NEGRA en [COM]",
+            escala: "Selector en 10A (Corriente Continua).", ejemplo: "Medir fuga de corriente en reposo.",
+            lectura: "Consumo normal reposo: <strong>< 0.05A (50mA)</strong>.",
+            tip: "⚠️ ¡Peligro! Nunca midas corriente tocando positivo y negativo directo."
+        }
+    };
+    function mostrarMultimetro() {
+        const seleccion = document.getElementById("tipoMultimetro").value;
+        const caja = document.getElementById("caja-resultados-multimetro");
+        if (seleccion && bdMultimetro[seleccion]) {
+            const datos = bdMultimetro[seleccion];
+            document.getElementById("res-multi-titulo").textContent = datos.titulo;
+            document.getElementById("res-multi-escala").innerHTML = datos.escala;
+            document.getElementById("res-multi-cables").innerHTML = datos.cables;
+            document.getElementById("res-multi-ejemplo").innerHTML = datos.ejemplo;
+            document.getElementById("res-multi-lectura").innerHTML = datos.lectura;
+            document.getElementById("res-multi-tip").innerHTML = datos.tip;
+            caja.style.display = "block";
+        } else { caja.style.display = "none"; }
+    }
+
+    // TAB 7: GUÍA ELÉCTRICA INTERACTIVA
+    const datosElectricos = {
+        "10": { cable: "1.5 mm²", termica: "10 A (Curva C)", disyuntor: "25 A / 30 mA (General)" },
+        "16": { cable: "2.5 mm²", termica: "16 A (Curva C)", disyuntor: "25 A o 40 A / 30 mA" },
+        "20": { cable: "4.0 mm²", termica: "20 A (Curva C)", disyuntor: "40 A / 30 mA" },
+        "32": { cable: "6.0 mm²", termica: "32 A (Curva C)", disyuntor: "40 A o 63 A / 30 mA" },
+        "40": { cable: "10.0 mm²", termica: "40 A (Curva C)", disyuntor: "63 A / 30 mA" }
+    };
+
+    function calcularGuiaElectrica() {
+        const consumo = document.getElementById('selectConsumoElectrico').value;
+        const caja = document.getElementById('resBoxGuiaElectrica');
+        
+        if (consumo && datosElectricos[consumo]) {
+            const data = datosElectricos[consumo];
+            document.getElementById('resElecCable').textContent = data.cable;
+            document.getElementById('resElecTermica').textContent = data.termica;
+            document.getElementById('resElecDisyuntor').textContent = data.disyuntor;
+            caja.style.display = 'block';
+        } else {
+            caja.style.display = 'none';
+        }
+    }
+
+    // TAB 9: PESO MATERIALES
+    function cambiarFormaPeso() {
+        const f = document.getElementById('pesoForma').value;
+        document.getElementById('inputD1').style.display = 'block';
+        document.getElementById('inputD2').style.display = f === 'tubo' ? 'block' : 'none';
+        document.getElementById('inputAncho').style.display = f === 'chapa' ? 'block' : 'none';
+    }
+    function calcularPesoMaterial() {
+        const f = document.getElementById('pesoForma').value;
+        const dens = parseFloat(document.getElementById('pesoMaterial').value);
+        const d1 = parseFloat(document.getElementById('pesoD1').value) || 0;
+        const d2 = parseFloat(document.getElementById('pesoD2').value) || 0;
+        const ancho = parseFloat(document.getElementById('pesoAncho').value) || 0;
+        const largo = parseFloat(document.getElementById('pesoLargo').value) || 0;
+
+        if (largo <= 0 || d1 <= 0) return alert("Ingrese dimensiones válidas.");
+        let volMm3 = 0;
+
+        if (f === 'redondo') volMm3 = Math.PI * Math.pow(d1 / 2, 2) * largo;
+        else if (f === 'tubo') volMm3 = Math.PI * (Math.pow(d1 / 2, 2) - Math.pow(d2 / 2, 2)) * largo;
+        else if (f === 'chapa') volMm3 = d1 * ancho * largo;
+        else if (f === 'cuadrado') volMm3 = d1 * d1 * largo;
+
+        const volCm3 = volMm3 / 1000;
+        const pesoKg = (volCm3 * dens) / 1000;
+
+        document.getElementById('resPesoKg').textContent = pesoKg.toFixed(2) + " kg";
+        document.getElementById('resVolCm3').textContent = volCm3.toFixed(1);
+        document.getElementById('resBoxPeso').style.display = "block";
+    }
+
+    // TAB 10: TOLERANCIAS ISO H7
+    function calcularTolerancia() {
+        const d = parseFloat(document.getElementById('tolMedida').value);
+        const tipo = document.getElementById('tolAjuste').value;
+        if (isNaN(d) || d <= 0) return alert("Ingrese una medida nominal.");
+
+        let alojTol = "+0.021 / +0.000"; let ejeTol = "";
+        let cotaAloj = `${d.toFixed(3)} mm a ${(d + 0.021).toFixed(3)} mm`; let cotaEje = "";
+
+        if (tipo === 'prensa') {
+            ejeTol = "+0.035 / +0.022 (p6)"; cotaEje = `${(d + 0.022).toFixed(3)} mm a ${(d + 0.035).toFixed(3)} mm`;
+        } else if (tipo === 'deslizante') {
+            ejeTol = "-0.007 / -0.020 (g6)"; cotaEje = `${(d - 0.020).toFixed(3)} mm a ${(d - 0.007).toFixed(3)} mm`;
+        } else {
+            ejeTol = "-0.020 / -0.041 (f7)"; cotaEje = `${(d - 0.041).toFixed(3)} mm a ${(d - 0.020).toFixed(3)} mm`;
+        }
+
+        document.getElementById('tolAlojMicras').textContent = alojTol;
+        document.getElementById('tolAlojCota').textContent = cotaAloj;
+        document.getElementById('tolEjeMicras').textContent = ejeTol;
+        document.getElementById('tolEjeCota').textContent = cotaEje;
+        document.getElementById('resBoxTol').style.display = "block";
+    }
+
+    // TAB 11: TRANSMISIÓN POLEAS
+    function calcularTransmision() {
+        const rpmM = parseFloat(document.getElementById('rpmMotor').value);
+        const dM = parseFloat(document.getElementById('dMotor').value);
+        const dC = parseFloat(document.getElementById('dConducida').value);
+
+        if (!rpmM || !dM || !dC) return alert("Complete todos los campos.");
+        const rpmFinal = Math.round((rpmM * dM) / dC);
+        const relacion = (dC / dM).toFixed(2);
+        const velM_s = ((Math.PI * (dM / 1000) * rpmM) / 60).toFixed(1);
+
+        document.getElementById('resRpmFinal').textContent = rpmFinal + " RPM";
+        document.getElementById('resRelacionTrans').textContent = "1 : " + relacion;
+        document.getElementById('resVelCorrea').textContent = velM_s;
+        document.getElementById('resBoxTrans').style.display = "block";
+    }
+
+    // MOTORES - RENDERIZADO VISUAL
+    function renderizarEsquemaMotor() {
+        const tipo = document.getElementById('selectTipoMotor').value;
+        const lienzo = document.getElementById('lienzoBornera');
+        const titulo = document.getElementById('tituloEsquemaMotor');
+        const etiqueta = document.getElementById('etiquetaAlimentacion');
+        const texto = document.getElementById('textoExplicativoMotor');
+        lienzo.style.gridTemplateColumns = "repeat(3, 60px)";
+
+        if (tipo === 'triangulo') {
+            titulo.textContent = "Conexión Triángulo (Δ)";
+            lienzo.innerHTML = `
+                <div class="puente-metalico" style="width:12px; height:52px; top:20px; left:28px;"></div>
+                <div class="puente-metalico" style="width:12px; height:52px; top:20px; left:118px;"></div>
+                <div class="puente-metalico" style="width:12px; height:52px; top:20px; left:208px;"></div>
+                <div class="borne-terminal">W2</div><div class="borne-terminal">U2</div><div class="borne-terminal">V2</div>
+                <div class="borne-terminal">U1</div><div class="borne-terminal">V1</div><div class="borne-terminal">W1</div>
+            `;
+            etiqueta.textContent = "Alimentación Red Trifásica: Conectar R, S, T a los bornes inferiores";
+            texto.innerHTML = "💡 <b>Conexión Triángulo (Δ):</b> 3 puentes verticales. Tensión menor de placa (ej. 220V).";
+        } else if (tipo === 'estrella') {
+            titulo.textContent = "Conexión Estrella (Y)";
+            lienzo.innerHTML = `
+                <div class="puente-metalico" style="width:202px; height:12px; top:39px; left:28px;"></div>
+                <div class="borne-terminal">W2</div><div class="borne-terminal">U2</div><div class="borne-terminal">V2</div>
+                <div class="borne-terminal">U1</div><div class="borne-terminal">V1</div><div class="borne-terminal">W1</div>
+            `;
+            etiqueta.textContent = "Alimentación Red Trifásica: Conectar R, S, T a los bornes inferiores";
+            texto.innerHTML = "💡 <b>Conexión Estrella (Y):</b> 1 puente horizontal superior. Tensión mayor de placa (ej. 380V).";
+        } else if (tipo === 'inversion') {
+            titulo.textContent = "Inversión de Giro Trifásico";
+            lienzo.innerHTML = `
+                <div class="puente-metalico" style="width:92px; height:12px; top:39px; left:28px; background:#2a9d8f;"></div>
+                <div class="borne-terminal" style="background:#e76f51;">L1</div><div class="borne-terminal" style="background:#2a9d8f;">L2</div><div class="borne-terminal" style="background:#e9c46a;">L3</div>
+                <div class="borne-terminal" style="background:#e76f51;">L2</div><div class="borne-terminal" style="background:#2a9d8f;">L1</div><div class="borne-terminal" style="background:#e9c46a;">L3</div>
+            `;
+            etiqueta.textContent = "Intercambiar dos fases de entrada";
+            texto.innerHTML = "💡 <b>Inversión:</b> Cruce dos cables de fase (ej. L1 por L2).";
+        } else if (tipo === 'monofasico') {
+            titulo.textContent = "Monofásico con Capacitor";
+            lienzo.style.gridTemplateColumns = "repeat(2, 60px)";
+            lienzo.innerHTML = `
+                <div class="puente-metalico" style="width:12px; height:52px; top:20px; left:28px;"></div>
+                <div style="position: absolute; top: 38px; left: 82px; background: #2a9d8f; color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; z-index: 5;">┥┣ CAPACITOR</div>
+                <div class="borne-terminal">Z2</div><div class="borne-terminal">U2</div>
+                <div class="borne-terminal">Z1</div><div class="borne-terminal">U1</div>
+            `;
+            etiqueta.textContent = "Red Monofásica en U1 y Z1";
+            texto.innerHTML = "💡 <b>Monofásico:</b> Capacitor en serie con la bobina de arranque.";
+        }
+    }
+    renderizarEsquemaMotor();
+
+    // MÓDULO 13: CHAVETEROS (DIN 6885)
+    function calcularChaveta() {
+        const d = parseFloat(document.getElementById('diametroEjeChaveta').value);
+        if (isNaN(d) || d <= 0) return alert("Ingrese un diámetro de eje válido.");
+        let b = 0, h = 0, t1 = 0, t2 = 0;
+
+        if (d > 6 && d <= 8) { b = 2; h = 2; t1 = 1.2; t2 = 1.0; }
+        else if (d <= 10) { b = 3; h = 3; t1 = 1.8; t2 = 1.4; }
+        else if (d <= 12) { b = 4; h = 4; t1 = 2.5; t2 = 1.8; }
+        else if (d <= 17) { b = 5; h = 5; t1 = 3.0; t2 = 2.3; }
+        else if (d <= 22) { b = 6; h = 6; t1 = 3.5; t2 = 2.8; }
+        else if (d <= 30) { b = 8; h = 7; t1 = 4.0; t2 = 3.3; }
+        else if (d <= 38) { b = 10; h = 8; t1 = 5.0; t2 = 3.3; }
+        else if (d <= 44) { b = 12; h = 8; t1 = 5.0; t2 = 3.3; }
+        else if (d <= 50) { b = 14; h = 9; t1 = 5.5; t2 = 3.8; }
+        else if (d <= 58) { b = 16; h = 10; t1 = 6.0; t2 = 4.3; }
+        else if (d <= 65) { b = 18; h = 11; t1 = 7.0; t2 = 4.4; }
+        else if (d <= 75) { b = 20; h = 12; t1 = 7.5; t2 = 4.9; }
+        else { b = 22; h = 14; t1 = 9.0; t2 = 5.4; }
+
+        document.getElementById('resChavetaB').textContent = b;
+        document.getElementById('resChavetaH').textContent = h;
+        document.getElementById('resChavetaT1').textContent = t1;
+        document.getElementById('resChavetaT2').textContent = t2;
+        document.getElementById('resBoxChaveta').style.display = 'block';
+    }
+
+    // MÓDULO 14: CONVERSOR DE UNIDADES
+    const unidadesConv = {
+        torque: { "kgm": 0.101972, "lb-pie": 0.737562, "Ncm": 100 },
+        presion: { "Bar": 0.01, "PSI": 0.145038, "kg/cm²": 0.010197 },
+        potencia: { "kW": 0.0007457, "CV": 0.00101387, "HP": 0.001 }
+    };
+    function actualizarCamposConversor() {
+        const tipo = document.getElementById('tipoConversor').value;
+        const selDestino = document.getElementById('unidadDestinoConv');
+        selDestino.innerHTML = "";
+        let baseText = "Nm";
+        if (tipo === 'presion') baseText = "kPa";
+        if (tipo === 'potencia') baseText = "Watts (W)";
+        document.getElementById('labelValorOrigen').textContent = `Valor (${baseText}):`;
+
+        Object.keys(unidadesConv[tipo]).forEach(u => {
+            let el = document.createElement('option');
+            el.value = u; el.textContent = u;
+            selDestino.appendChild(el);
+        });
+        convertirUnidades();
+    }
+    function convertirUnidades() {
+        const tipo = document.getElementById('tipoConversor').value;
+        const val = parseFloat(document.getElementById('valorOrigenConv').value) || 0;
+        const dest = document.getElementById('unidadDestinoConv').value;
+        const factor = unidadesConv[tipo][dest] || 1;
+        const res = val * factor;
+        document.getElementById('resValorConv').textContent = res.toFixed(4) + " " + dest;
+    }
+    actualizarCamposConversor();
+</script>
+
+<!-- ============================================================== -->
+<!-- SCRIPT CALCULADORA GEOMÉTRICA PRO                              -->
+<!-- ============================================================== -->
+<script>
+    const shapeSelect = document.getElementById('shapeSelect');
+    const modeSelect = document.getElementById('modeSelect');
+    const unitSelect = document.getElementById('unitSelect');
+    const directInputsContainer = document.getElementById('directInputsContainer');
+    const inverseInputsContainer = document.getElementById('inverseInputsContainer');
+    const inverseTargetLabel = document.getElementById('inverseTargetLabel');
+    const inverseTargetValue = document.getElementById('inverseTargetValue');
+    const inverseExtraContainer = document.getElementById('inverseExtraContainer');
+    const inverseError = document.getElementById('inverseError');
+    const inputGroups = document.querySelectorAll('#directInputsContainer .input-group');
+    const allInputs = document.querySelectorAll('#tab-geometria input[type="number"]');
+    const inputUnitsLabels = document.querySelectorAll('.input-unit');
+    const cylinderError = document.getElementById('cylinderError');
+    const isoscelesError = document.getElementById('isoscelesError');
+    const scaleneError = document.getElementById('scaleneError');
+    const theoryText = document.getElementById('theoryText');
+    const geomCanvas = document.getElementById('geomCanvas');
+    const ctx = geomCanvas.getContext('2d');
+    const primaryResultContainer = document.getElementById('primaryResultContainer');
+    const primaryResultLabel = document.getElementById('primaryResultLabel');
+    const mainResultValue = document.getElementById('mainResultValue');
+    const mainResultUnit = document.getElementById('mainResultUnit');
+    const secondaryResultContainer = document.getElementById('secondaryResultContainer');
+    const secondaryResultLabel = document.getElementById('secondaryResultLabel');
+    const secondaryResultValue = document.getElementById('secondaryResultValue');
+    const secondaryResultUnit = document.getElementById('secondaryResultUnit');
+    const tertiaryResultContainer = document.getElementById('tertiaryResultContainer');
+    const tertiaryResultLabel = document.getElementById('tertiaryResultLabel');
+    const tertiaryResultValue = document.getElementById('tertiaryResultValue');
+    const saveBtn = document.getElementById('saveBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const historyList = document.getElementById('historyList');
+    
+    let currentUnit = 'mm';
+    let historyData = JSON.parse(localStorage.getItem('geom_history')) || [];
+    renderHistory();
+
+    function getColors() {
+        const style = getComputedStyle(document.documentElement);
+        return {
+            stroke: style.getPropertyValue('--verde-acento').trim(),
+            accent: style.getPropertyValue('--rojo-alerta').trim(),
+            fill: style.getPropertyValue('--theory-bg').trim(),
+            text: style.getPropertyValue('--text-color').trim()
+        };
+    }
+
+    const shapeInfo = {
+        circle: { name: "Círculo", desc: "Curva cerrada equidistante del centro.", formula: "Área: π × r²<br>Perímetro: 2πr" },
+        square: { name: "Cuadrado", desc: "Polígono regular de cuatro lados iguales.", formula: "Área: Lado²<br>Perímetro: 4 × Lado" },
+        rectangle: { name: "Rectángulo", desc: "Paralelogramo con ángulos rectos.", formula: "Área: Base × Altura<br>Perímetro: 2(Base + Altura)" },
+        equilateral: { name: "Triángulo Equilátero", desc: "Tres lados y ángulos iguales (60°).", formula: "Área: (√3 / 4) × Lado²<br>Ángulos: 60° / 60° / 60°" },
+        isosceles: { name: "Triángulo Isósceles", desc: "Dos lados de igual longitud.", formula: "Área: (Base × Altura) / 2" },
+        scalene: { name: "Triángulo Escaleno", desc: "Tres lados diferentes.", formula: "Área: Fórmula de Herón" },
+        pythagoras: { name: "Triángulo Rectángulo", desc: "Ángulo de 90°.", formula: "Hipotenusa (c): √(a² + b²)" },
+        sphere: { name: "Esfera", desc: "Cuerpo tridimensional redondo.", formula: "Volumen: (4/3)πr³" },
+        cube: { name: "Cubo", desc: "Seis caras cuadradas.", formula: "Volumen: Lado³" },
+        hollowCylinder: { name: "Cilindro Hueco", desc: "Tubo con vaciado concéntrico.", formula: "Volumen: πh(R² - r²)" },
+        cone: { name: "Cono", desc: "Cuerpo con base circular y cúspide.", formula: "Volumen: (1/3)πr²h" },
+        pyramid: { name: "Pirámide Cuadrada", desc: "Base cuadrada y caras triangulares.", formula: "Volumen: (1/3)b²h" }
+    };
+
+    function drawCanvas() {
+        const shape = shapeSelect.value;
+        const c = getColors();
+        ctx.clearRect(0, 0, geomCanvas.width, geomCanvas.height);
+        ctx.strokeStyle = c.stroke; ctx.fillStyle = c.fill; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        const cx = 80, cy = 80;
+        let val1 = parseFloat(document.getElementById('radius')?.value) || parseFloat(document.getElementById('side')?.value) || 5;
+        let scale = Math.max(0.4, Math.min(1.6, val1 / 5 || 1));
+
+        if (shape === 'circle' || shape === 'sphere') {
+            let r = Math.min(55, 35 * scale);
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            if(shape === 'sphere') { ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.4, 0, 0, Math.PI * 2); ctx.stroke(); }
+        } else if (shape === 'square' || shape === 'cube') {
+            let s = Math.min(70, 45 * scale);
+            ctx.beginPath(); ctx.rect(cx - s/2, cy - s/2, s, s); ctx.fill(); ctx.stroke();
+        } else if (shape === 'rectangle' || shape === 'hollowCylinder') {
+            ctx.beginPath(); ctx.rect(cx - 35, cy - 20, 70, 40); ctx.fill(); ctx.stroke();
+        } else if (shape === 'equilateral' || shape === 'isosceles' || shape === 'scalene' || shape === 'pythagoras' || shape === 'cone' || shape === 'pyramid') {
+            ctx.beginPath(); ctx.moveTo(cx, cy - 40); ctx.lineTo(cx - 40, cy + 40); ctx.lineTo(cx + 40, cy + 40); ctx.closePath(); ctx.fill(); ctx.stroke();
+        } else {
+            ctx.beginPath(); ctx.arc(cx, cy, 35, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+    }
+
+    function updateTheory(shape) {
+        const info = shapeInfo[shape];
+        theoryText.innerHTML = `<strong>${info.name}</strong>${info.desc}<br><ul><li>${info.formula}</li></ul>`;
+        drawCanvas();
+    }
+    updateTheory('circle');
+
+    modeSelect.addEventListener('change', (e) => {
+        const isInverse = e.target.value === 'inverse';
+        directInputsContainer.style.display = isInverse ? 'none' : 'block';
+        inverseInputsContainer.style.display = isInverse ? 'block' : 'none';
+        if (isInverse) setupInverseInputs();
+        calculate();
+    });
+
+    shapeSelect.addEventListener('change', (e) => {
+        inputGroups.forEach(group => group.classList.remove('active'));
+        allInputs.forEach(input => input.value = '');
+        const selectedShape = e.target.value;
+        document.getElementById(`${selectedShape}Inputs`).classList.add('active');
+        updateTheory(selectedShape);
+        if (modeSelect.value === 'inverse') setupInverseInputs();
+        else updateDirectLabels(selectedShape);
+        calculate();
+    });
+
+    function updateDirectLabels(shape) {
+        tertiaryResultContainer.style.display = 'none';
+        if (['sphere', 'cube', 'hollowCylinder', 'cone', 'pyramid'].includes(shape)) {
+            primaryResultLabel.textContent = 'Volumen'; mainResultUnit.textContent = `${currentUnit}³`;
+            secondaryResultContainer.style.display = 'flex'; secondaryResultLabel.textContent = 'Área Sup.'; secondaryResultUnit.textContent = `${currentUnit}²`;
+        } else {
+            primaryResultLabel.textContent = 'Área'; mainResultUnit.textContent = `${currentUnit}²`;
+            secondaryResultContainer.style.display = 'flex'; secondaryResultLabel.textContent = 'Perímetro'; secondaryResultUnit.textContent = `${currentUnit}`;
+            if (['equilateral', 'isosceles', 'scalene', 'pythagoras'].includes(shape)) tertiaryResultContainer.style.display = 'flex';
+        }
+    }
+
+    function setupInverseInputs() {
+        inverseExtraContainer.innerHTML = '';
+        tertiaryResultContainer.style.display = 'none';
+        inverseTargetLabel.textContent = `Valor Objetivo (${currentUnit}² / ${currentUnit}³):`;
+        primaryResultLabel.textContent = 'Medida Necesaria';
+        mainResultUnit.textContent = `${currentUnit}`;
+        secondaryResultContainer.style.display = 'none';
+    }
+
+    unitSelect.addEventListener('change', (e) => {
+        currentUnit = e.target.value;
+        inputUnitsLabels.forEach(el => el.textContent = `(${currentUnit})`);
+        calculate();
+    });
+
+    function calculate() {
+        const shape = shapeSelect.value;
+        const isInverse = modeSelect.value === 'inverse';
+        let res1 = 0, res2 = 0; let anglesText = "0°";
+
+        if (!isInverse) {
+            updateDirectLabels(shape);
+            if (shape === 'circle') {
+                const r = parseFloat(document.getElementById('radius').value) || 0;
+                res1 = Math.PI * Math.pow(r, 2); res2 = 2 * Math.PI * r;
+            } else if (shape === 'square') {
+                const s = parseFloat(document.getElementById('side').value) || 0;
+                res1 = Math.pow(s, 2); res2 = 4 * s;
+            } else if (shape === 'rectangle') {
+                const w = parseFloat(document.getElementById('width').value) || 0;
+                const h = parseFloat(document.getElementById('height').value) || 0;
+                res1 = w * h; res2 = 2 * (w + h);
+            } else if (shape === 'equilateral') {
+                const s = parseFloat(document.getElementById('equilateralSide').value) || 0;
+                res1 = (Math.sqrt(3) / 4) * Math.pow(s, 2); res2 = 3 * s; anglesText = "60°, 60°, 60°";
+            } else if (shape === 'isosceles') {
+                const b = parseFloat(document.getElementById('isoscelesBase').value) || 0;
+                const a = parseFloat(document.getElementById('isoscelesSide').value) || 0;
+                if (2 * a <= b || a <= 0 || b <= 0) {
+                    isoscelesError.style.display = 'block'; res1 = 0; res2 = 0;
+                } else {
+                    isoscelesError.style.display = 'none';
+                    const h = Math.sqrt(Math.max(0, Math.pow(a, 2) - Math.pow(b / 2, 2)));
+                    res1 = (b * h) / 2; res2 = 2 * a + b;
+                }
+            } else if (shape === 'scalene') {
+                const a = parseFloat(document.getElementById('scaleneA').value) || 0;
+                const b = parseFloat(document.getElementById('scaleneB').value) || 0;
+                const c = parseFloat(document.getElementById('scaleneC').value) || 0;
+                if (a + b <= c || a + c <= b || b + c <= a || a <= 0 || b <= 0 || c <= 0) {
+                    scaleneError.style.display = 'block'; res1 = 0; res2 = 0;
+                } else {
+                    scaleneError.style.display = 'none';
+                    res2 = a + b + c; const s = res2 / 2;
+                    res1 = Math.sqrt(Math.max(0, s * (s - a) * (s - b) * (s - c)));
+                }
+            } else if (shape === 'pythagoras') {
+                const a = parseFloat(document.getElementById('catetoA').value) || 0;
+                const b = parseFloat(document.getElementById('catetoB').value) || 0;
+                res2 = Math.sqrt(Math.pow(a, 2) + Math.pow(b, 2)); res1 = (a * b) / 2;
+            } else if (shape === 'sphere') {
+                const r = parseFloat(document.getElementById('sphereRadius').value) || 0;
+                res1 = (4/3) * Math.PI * Math.pow(r, 3); res2 = 4 * Math.PI * Math.pow(r, 2);
+            } else if (shape === 'cube') {
+                const s = parseFloat(document.getElementById('cubeSide').value) || 0;
+                res1 = Math.pow(s, 3); res2 = 6 * Math.pow(s, 2);
+            } else if (shape === 'hollowCylinder') {
+                const R = parseFloat(document.getElementById('outerRadius').value) || 0;
+                const r = parseFloat(document.getElementById('innerRadius').value) || 0;
+                const h = parseFloat(document.getElementById('cylinderHeight').value) || 0;
+                if (R <= r || R <= 0 || h <= 0) {
+                    cylinderError.style.display = 'block'; res1 = 0; res2 = 0;
+                } else {
+                    cylinderError.style.display = 'none';
+                    res1 = Math.PI * h * (Math.pow(R, 2) - Math.pow(r, 2));
+                    res2 = (2 * Math.PI * R * h) + (2 * Math.PI * r * h) + (2 * Math.PI * (Math.pow(R, 2) - Math.pow(r, 2)));
+                }
+            } else if (shape === 'cone') {
+                const r = parseFloat(document.getElementById('coneRadius').value) || 0;
+                const h = parseFloat(document.getElementById('coneHeight').value) || 0;
+                if (r > 0 && h > 0) {
+                    res1 = (1 / 3) * Math.PI * Math.pow(r, 2) * h;
+                    const slant = Math.sqrt(Math.pow(r, 2) + Math.pow(h, 2));
+                    res2 = Math.PI * Math.pow(r, 2) + Math.PI * r * slant;
+                }
+            } else if (shape === 'pyramid') {
+                const b = parseFloat(document.getElementById('pyramidBase').value) || 0;
+                const h = parseFloat(document.getElementById('pyramidHeight').value) || 0;
+                if (b > 0 && h > 0) {
+                    res1 = (1 / 3) * Math.pow(b, 2) * h;
+                    const slant = Math.sqrt(Math.pow(h, 2) + Math.pow(b / 2, 2));
+                    res2 = Math.pow(b, 2) + (2 * b * slant);
+                }
+            }
+        } else {
+            const target = parseFloat(inverseTargetValue.value) || 0;
+            if (shape === 'circle') res1 = Math.sqrt(target / Math.PI);
+            else if (shape === 'square') res1 = Math.sqrt(target);
+            else if (shape === 'cube') res1 = Math.cbrt(target);
+        }
+
+        mainResultValue.textContent = res1.toFixed(2);
+        if(!isInverse) { secondaryResultValue.textContent = res2.toFixed(2); tertiaryResultValue.textContent = anglesText; }
+        drawCanvas();
+    }
+
+    allInputs.forEach(input => input.addEventListener('input', calculate));
+    inverseTargetValue.addEventListener('input', calculate);
+
+    saveBtn.addEventListener('click', () => {
+        if (parseFloat(mainResultValue.textContent) === 0) return;
+        const shapeName = shapeSelect.options[shapeSelect.selectedIndex].text;
+        historyData.unshift({ name: shapeName, results: `Val 1: ${mainResultValue.textContent}${currentUnit}` });
+        if (historyData.length > 5) historyData.pop();
+        localStorage.setItem('geom_history', JSON.stringify(historyData));
+        renderHistory();
+    });
+
+    clearHistoryBtn.addEventListener('click', () => { historyData = []; localStorage.removeItem('geom_history'); renderHistory(); });
+    function renderHistory() {
+        historyList.innerHTML = '';
+        if (historyData.length === 0) { historyList.innerHTML = `<li class="history-empty">Sin registros.</li>`; return; }
+        historyData.forEach(item => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span class="history-shape">${item.name}</span><span>${item.results}</span>`;
+            historyList.appendChild(li);
+        });
+    }
+
+    exportBtn.addEventListener('click', () => {
+        if (historyData.length === 0) return alert('No hay historial.');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text("Reporte Geométrico Cylitec", 20, 20);
+        let y = 40;
+        historyData.forEach((item, i) => { doc.text(`${i+1}. ${item.name}: ${item.results}`, 20, y); y += 10; });
+        doc.save("Historial_Cylitec.pdf");
+    });
+</script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+      });
+    }
+</script>
+</body>
+</html>
